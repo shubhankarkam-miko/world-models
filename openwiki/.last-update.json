@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-08T07:48:38.484Z",
-  "command": "init",
-  "gitHead": "11b3fd63b57b9815ad38ecc5106ee33473393d39",
-  "model": "google/gemma-4-e4b"
+  "updatedAt": "2026-07-08T12:39:19.851Z",
+  "command": "update",
+  "gitHead": "7594583465d7eda2dcd26206d79c8f86ed9f1d30",
+  "model": "google/gemma-4-e2b"
 }
