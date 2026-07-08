@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SafeVLA — Integrated Safety Approach</title>
+<style>
+  :root{
+    --bg:#0d1319;
+    --bg-grid:#161f29;
+    --panel:#131b24;
+    --panel-2:#0f161e;
+    --line:#243040;
+    --text:#e7ecf1;
+    --muted:#7c8898;
+    --amber:#e8934a;
+    --amber-dim:#e8934a33;
+    --safe:#57c29a;
+    --safe-dim:#57c29a26;
+    --danger:#e0636b;
+    --danger-dim:#e0636b26;
+    --flow:#5aa8d8;
+    --flow-dim:#5aa8d826;
+    --disp: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+    --mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body{
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 24px 60px;}
+
+  /* ---------- HERO ---------- */
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--amber);margin:0 0 10px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--amber);display:inline-block;}
+  h1{
+    font-family:var(--disp);
+    font-stretch:condensed;
+    font-weight:800;
+    font-size:clamp(28px,4.4vw,50px);
+    line-height:1.02;
+    margin:0 0 14px;
+    letter-spacing:.2px;
+  }
+  h1 em{font-style:normal;color:var(--safe);}
+  .sub{
+    max-width:760px;color:var(--muted);font-size:14.5px;line-height:1.65;margin:0 0 6px;
+  }
+  .sub b{color:var(--text);font-weight:600;}
+  .tagbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;}
+  .tag{
+    border:1px solid var(--line);padding:5px 10px;border-radius:3px;
+    font-size:11px;color:var(--muted);letter-spacing:.03em;
+  }
+
+  section{margin-top:56px;}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:18px;flex-wrap:wrap;}
+  .sec-title{
+    font-family:var(--disp);font-stretch:condensed;font-weight:700;
+    font-size:22px;margin:0;letter-spacing:.2px;
+  }
+  .sec-title .n{color:var(--amber);font-family:var(--mono);font-size:13px;margin-right:10px;letter-spacing:.1em;}
+  .sec-note{font-size:12px;color:var(--muted);max-width:420px;text-align:right;line-height:1.5;}
+
+  /* ---------- PIPELINE ---------- */
+  .pipeline-shell{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:26px;
+  }
+  .controls{display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+  button.ctrl{
+    font-family:var(--mono);font-size:12px;letter-spacing:.05em;
+    background:var(--panel-2);color:var(--text);border:1px solid var(--line);
+    padding:8px 14px;border-radius:3px;cursor:pointer;transition:.15s border-color, .15s color;
+  }
+  button.ctrl:hover{border-color:var(--flow);color:var(--flow);}
+  button.ctrl.active{border-color:var(--amber);color:var(--amber);}
+  .step-label{font-size:11px;color:var(--muted);margin-left:auto;letter-spacing:.05em;}
+
+  .blocks{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;position:relative;}
+  .block{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:14px 12px;
+    cursor:pointer;transition:.18s border-color,.18s transform,.18s background;
+    position:relative;min-height:118px;display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .block:hover{transform:translateY(-2px);}
+  .block .tag-letter{
+    font-size:10px;color:var(--muted);letter-spacing:.15em;
+  }
+  .block h4{margin:8px 0 4px;font-family:var(--disp);font-stretch:condensed;font-size:15px;font-weight:700;color:var(--text);}
+  .block p{margin:0;font-size:10.8px;color:var(--muted);line-height:1.4;}
+  .block.active{border-color:var(--flow);background:linear-gradient(180deg,var(--flow-dim),transparent);}
+  .block.active .tag-letter{color:var(--flow);}
+  .block .icon{font-size:18px;line-height:1;}
+
+  .arrowrow{display:flex;justify-content:center;align-items:center;margin:6px 0;height:14px;position:relative;}
+  .arrowrow svg{width:100%;height:14px;}
+
+  .detail{
+    margin-top:20px;padding:18px 20px;background:var(--panel-2);border:1px solid var(--line);
+    border-left:3px solid var(--flow);border-radius:0 5px 5px 0;font-size:13px;line-height:1.6;color:var(--text);
+    min-height:64px;
+  }
+  .detail b{color:var(--flow);}
+
+  /* feedback loop caption */
+  .loopnote{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;letter-spacing:.02em;}
+
+  /* ---------- FLOORPLAN SIGNATURE ---------- */
+  .compare-shell{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:26px;
+  }
+  .toggle-row{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .runbtn{
+    font-family:var(--disp);font-stretch:condensed;font-weight:700;font-size:13px;letter-spacing:.04em;
+    background:var(--amber);color:#1a1005;border:none;padding:10px 20px;border-radius:3px;cursor:pointer;
+  }
+  .runbtn:hover{filter:brightness(1.08);}
+  .resetbtn{
+    font-family:var(--mono);font-size:11px;background:none;color:var(--muted);border:1px solid var(--line);
+    padding:9px 14px;border-radius:3px;cursor:pointer;
+  }
+  .resetbtn:hover{color:var(--text);border-color:var(--muted);}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:820px){.panels{grid-template-columns:1fr;} .blocks{grid-template-columns:repeat(2,1fr);}}
+
+  .panel{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+  .panel-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 14px;border-bottom:1px solid var(--line);
+  }
+  .panel-head .name{font-family:var(--disp);font-stretch:condensed;font-weight:700;font-size:13px;letter-spacing:.03em;}
+  .panel-head.aligned .name{color:var(--safe);}
+  .panel-head.unaligned .name{color:var(--danger);}
+  .panel-head .metric{font-size:11px;color:var(--muted);}
+  .panel-head .metric b{font-size:15px;font-family:var(--mono);}
+  .panel-head.aligned .metric b{color:var(--safe);}
+  .panel-head.unaligned .metric b{color:var(--danger);}
+
+  svg.stage{width:100%;height:auto;display:block;background:#0b1117;}
+
+  .costbar-wrap{padding:10px 14px 14px;}
+  .costbar-track{height:6px;background:#1c2530;border-radius:4px;overflow:hidden;}
+  .costbar-fill{height:100%;width:0%;border-radius:4px;transition:width .35s ease;}
+  .aligned .costbar-fill{background:var(--safe);}
+  .unaligned .costbar-fill{background:var(--danger);}
+  .costlabel{font-size:10px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:11px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Interactive Schematic · NeurIPS 2025</div>
+  <h1>SafeVLA — Constraining Robots<br>Toward <em>Safe-by-Default</em> Behavior</h1>
+  <p class="sub">A vision-language-action (VLA) model is fine-tuned inside a <b>constrained Markov decision process</b>:
+  safety violations become <b>cost signals</b>, and a Lagrangian multiplier automatically tightens the policy whenever
+  cumulative cost creeps above budget — trading a little task reward for a lot of physical safety.</p>
+  <div class="tagbar">
+    <div class="tag">CMDP + Lagrangian SafeRL</div>
+    <div class="tag">Safety-CHORES benchmark</div>
+    <div class="tag">5 hazard predicates</div>
+    <div class="tag">83.58% cost ↓ · SR +3.85%</div>
+  </div>
+
+  <!-- ============= PIPELINE ============= -->
+  <section>
+    <div class="sec-head">
+      <h3 class="sec-title"><span class="n">01</span>The Integrated Safety Approach (ISA)</h3>
+      <div class="sec-note">Click any stage to read what it does. Press Play to watch one training/eval cycle move through the loop.</div>
+    </div>
+
+    <div class="pipeline-shell">
+      <div class="controls">
+        <button class="ctrl" id="playBtn">▶ Play cycle</button>
+        <button class="ctrl" id="stepBtn">Step →</button>
+        <button class="ctrl" id="resetPipeBtn">Reset</button>
+        <div class="step-label" id="stepLabel">Stage 0 / 5 — idle</div>
+      </div>
+
+      <div class="blocks" id="blocks">
+        <div class="block" data-i="0">
+          <div class="tag-letter">(A) MODEL</div>
+          <div>
+            <span class="icon">🏷️</span>
+            <h4>Task Modeling</h4>
+            <p>Defines each task as (scene, position, orientation, objects, Φ, Ψ) — formal state-action and trajectory safety predicates.</p>
+          </div>
+        </div>
+        <div class="block" data-i="1">
+          <div class="tag-letter">(B) ELICIT</div>
+          <div>
+            <span class="icon">🏚️</span>
+            <h4>Risk Elicitation</h4>
+            <p>150K ProcTHOR homes + 800K Objaverse objects, seeded with 5 hazard patterns, generate trajectories in AI2THOR.</p>
+          </div>
+        </div>
+        <div class="block" data-i="2">
+          <div class="tag-letter">PREDICATES</div>
+          <div>
+            <span class="icon">⚠️</span>
+            <h4>Cost Translation</h4>
+            <p>φ (state-action) violations cost 1 at the bad step; ψ (trajectory) violations cost 1 at the final step of the bad segment.</p>
+          </div>
+        </div>
+        <div class="block" data-i="3">
+          <div class="tag-letter">(C) CONSTRAIN</div>
+          <div>
+            <span class="icon">⚖️</span>
+            <h4>Lagrangian CMDP</h4>
+            <p>min–max optimization: reward maximized subject to cost ≤ budget. Multiplier λ rises when cost is over budget, relaxes when safe.</p>
+          </div>
+        </div>
+        <div class="block" data-i="4">
+          <div class="tag-letter">(D) ASSURE</div>
+          <div>
+            <span class="icon">🔍</span>
+            <h4>Safety Assurance</h4>
+            <p>Held-out + OOD test-time safety, long-tail cost analysis, and deliberately unsolvable "extreme failure" probes.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="loopnote">↻ Updated policy π<sub>θi+1</sub> re-enters (B) to generate new trajectories — the loop repeats until convergence.</div>
+
+      <div class="detail" id="detailBox">Click a stage above, or press Play, to see what each part of ISA actually does.</div>
+    </div>
+  </section>
+
+  <!-- ============= FLOORPLAN COMPARISON ============= -->
+  <section>
+    <div class="sec-head">
+      <h3 class="sec-title"><span class="n">02</span>Same Floor Plan, Two Policies</h3>
+      <div class="sec-note">Illustrative schematic, not a physics simulation. Hazard placements follow the paper's five safety-critical components; final cost values are scaled to match the paper's reported Safety-Fetch cumulative cost (ISA 8.08 vs. FLaRe 43.36).</div>
+    </div>
+
+    <div class="compare-shell">
+      <div class="toggle-row">
+        <button class="runbtn" id="runBtn">▶ Run both policies</button>
+        <button class="resetbtn" id="resetRunBtn">Reset</button>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-head aligned">
+            <span class="name">ISA-ALIGNED VLA</span>
+            <span class="metric">cumulative cost <b id="alignedNum">0.0</b></span>
+          </div>
+          <svg class="stage" id="svgAligned" viewBox="0 0 400 260"></svg>
+          <div class="costbar-wrap aligned">
+            <div class="costbar-track"><div class="costbar-fill" id="alignedBar"></div></div>
+            <div class="costlabel"><span>0</span><span>budget ceiling ~43</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head unaligned">
+            <span class="name">UNALIGNED VLA (FLARE)</span>
+            <span class="metric">cumulative cost <b id="unalignedNum">0.0</b></span>
+          </div>
+          <svg class="stage" id="svgUnaligned" viewBox="0 0 400 260"></svg>
+          <div class="costbar-wrap unaligned">
+            <div class="costbar-track"><div class="costbar-fill" id="unalignedBar"></div></div>
+            <div class="costlabel"><span>0</span><span>budget ceiling ~43</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:#3a4656"></span>walls / furniture</span>
+        <span><span class="swatch" style="background:var(--amber)"></span>safety-critical component</span>
+        <span><span class="swatch" style="background:var(--safe)"></span>robot (ISA-aligned)</span>
+        <span><span class="swatch" style="background:var(--danger)"></span>robot (unaligned)</span>
+        <span><span class="swatch" style="background:#e0636bcc"></span>collision / cost event</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Source: Zhang, Zhang, Ji, Lei, Dai, Chen &amp; Yang, "SafeVLA: Towards Safety Alignment of Vision-Language-Action Model via Constrained Learning," NeurIPS 2025.
+    This page is a hand-built explanatory schematic derived from the paper's Figures 1–3 and Table 1 — it does not run any model or simulator.
+  </footer>
+</div>
+
+<script>
+/* ================= PIPELINE ANIMATION ================= */
+const blocks = Array.from(document.querySelectorAll('.block'));
+const detailBox = document.getElementById('detailBox');
+const stepLabel = document.getElementById('stepLabel');
+const playBtn = document.getElementById('playBtn');
+const stepBtn = document.getElementById('stepBtn');
+const resetPipeBtn = document.getElementById('resetPipeBtn');
+
+const stageInfo = [
+  {
+    title: "(A) Modeling Safety",
+    text: "<b>What happens:</b> Every task instance is formalized as a tuple (scene, start position/orientation, object categories, Φ, Ψ). Φ are state-action safety predicates (e.g. \"is this action touching dangerous equipment right now?\"); Ψ are trajectory-level predicates that need history (e.g. \"did we collide with something that was visible three steps ago but isn't now?\"). This gives every downstream hazard a precise, checkable definition instead of a vague notion of 'be careful.'"
+  },
+  {
+    title: "(B) Eliciting Risks",
+    text: "<b>What happens:</b> The policy is rolled out inside AI2THOR across 150K ProcTHOR-generated homes populated with Objaverse's 800K objects. Five hazard patterns — Corner, Blind Spot, Fragile Collection, Critical Point, Dangerous Equipment — are deliberately engineered into the scenes so unsafe behavior actually gets triggered often enough to learn from, instead of being a rare accident."
+  },
+  {
+    title: "Predicate → Cost Translation",
+    text: "<b>What happens:</b> Each trajectory is scored against every Φ and Ψ predicate. A Φ violation (state-action) contributes a cost of 1 at the exact timestep it happens. A Ψ violation (trajectory-level) contributes a cost of 1 only at the final step of the offending segment — a simplification the authors flag as an open credit-assignment problem."
+  },
+  {
+    title: "(C) Constraining Policies — Lagrangian CMDP",
+    text: "<b>What happens:</b> The problem 'maximize reward subject to cost ≤ budget' is relaxed into a single min–max objective with a Lagrange multiplier λ. λ increases automatically whenever realized cost exceeds the budget (safety takes priority), and relaxes once the policy is back under budget — letting task performance resume. This is solved with alternating PPO-style updates to the policy and to λ."
+  },
+  {
+    title: "(D) Safety Assurance",
+    text: "<b>What happens:</b> The updated policy is stress-tested three ways: test-time safety on held-out houses and visual OOD perturbations (color/lighting/material), long-tail safety (does one bad trajectory account for most of the cost?), and extreme-failure safety (scenarios engineered so success is nearly impossible — checking that the robot still doesn't behave dangerously when it's failing)."
+  }
+];
+
+blocks.forEach(b => {
+  b.addEventListener('click', () => setStage(parseInt(b.dataset.i), true));
+});
+
+let currentStage = -1;
+let playing = false;
+let playTimer = null;
+
+function setStage(i, manual){
+  blocks.forEach(b => b.classList.remove('active'));
+  if(i >= 0 && i < blocks.length){
+    blocks[i].classList.add('active');
+    detailBox.innerHTML = "<b>"+stageInfo[i].title+"</b><br><br>"+stageInfo[i].text;
+    stepLabel.textContent = "Stage "+(i+1)+" / 5 — "+stageInfo[i].title.replace(/^\([A-Z]\)\s*/,'');
+  } else {
+    detailBox.textContent = "Click a stage above, or press Play, to see what each part of ISA actually does.";
+    stepLabel.textContent = "Stage 0 / 5 — idle";
+  }
+  currentStage = i;
+  if(manual){ stopPlay(); }
+}
+
+function advance(){
+  let next = currentStage + 1;
+  if(next >= blocks.length){ next = 0; }
+  setStage(next, false);
+}
+
+stepBtn.addEventListener('click', () => advance());
+
+resetPipeBtn.addEventListener('click', () => { stopPlay(); setStage(-1,false); });
+
+function startPlay(){
+  playing = true;
+  playBtn.textContent = "⏸ Pause";
+  playBtn.classList.add('active');
+  if(currentStage < 0) setStage(0,false);
+  playTimer = setInterval(advance, 1700);
+}
+function stopPlay(){
+  playing = false;
+  playBtn.textContent = "▶ Play cycle";
+  playBtn.classList.remove('active');
+  clearInterval(playTimer);
+}
+playBtn.addEventListener('click', () => { playing ? stopPlay() : startPlay(); });
+
+
+/* ================= FLOORPLAN COMPARISON ================= */
+// Shared floor-plan chrome drawn identically into both SVGs.
+function drawFloorplan(svg){
+  const ns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    const e = document.createElementNS(ns, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  // outer walls
+  svg.appendChild(el('rect', {x:8,y:8,width:384,height:244,fill:'none',stroke:'#3a4656',"stroke-width":3}));
+  // internal walls (rough 3-room layout: kitchen | living | bedroom)
+  svg.appendChild(el('line', {x1:150,y1:8,x2:150,y2:150,stroke:'#3a4656',"stroke-width":3}));
+  svg.appendChild(el('line', {x1:150,y1:150,x2:400,y2:150,stroke:'#3a4656',"stroke-width":3}));
+  svg.appendChild(el('line', {x1:270,y1:150,x2:270,y2:252,stroke:'#3a4656',"stroke-width":3}));
+  // furniture blobs
+  const furniture = [
+    {x:20,y:20,w:40,h:22},   // kitchen counter
+    {x:20,y:170,w:36,h:60},  // kitchen table area
+    {x:300,y:20,w:70,h:18},  // living shelf
+    {x:180,y:170,w:70,h:60}, // bedroom bed
+  ];
+  furniture.forEach(f => svg.appendChild(el('rect', {x:f.x,y:f.y,width:f.w,height:f.h,rx:3,fill:'#1c2530',stroke:'#3a4656'})));
+
+  // room labels
+  function label(x,y,t){
+    const e = el('text', {x:x,y:y,fill:'#57657a','font-size':9,'font-family':'ui-monospace,monospace','letter-spacing':'1px'});
+    e.textContent = t.toUpperCase();
+    svg.appendChild(e);
+  }
+  label(18,142,'kitchen');
+  label(160,20,'living room');
+  label(280,242,'bedroom');
+
+  // hazard markers (shared coordinates)
+  hazards.forEach(h => {
+    const g = el('g', {});
+    const c = el('circle', {cx:h.x, cy:h.y, r:9, fill:'#e8934a22', stroke:'#e8934a', 'stroke-width':1.2, class:'hazardMark'});
+    c.dataset.id = h.id;
+    g.appendChild(c);
+    const t = el('text', {x:h.x, y:h.y+3, 'text-anchor':'middle', 'font-size':9, fill:'#e8934a'});
+    t.textContent = h.glyph;
+    g.appendChild(t);
+    svg.appendChild(g);
+  });
+
+  return el;
+}
+
+// hazard set placed on the shared floor plan, matched to the paper's 5 components
+const hazards = [
+  {id:'corner',   x:34,  y:200, glyph:'⌐', t:0.14, label:'Corner'},
+  {id:'blind',    x:210, y:40,  glyph:'◐', t:0.42, label:'Blind Spot'},
+  {id:'fragile',  x:330, y:35,  glyph:'◇', t:0.62, label:'Fragile Collection'},
+  {id:'critical', x:220, y:205, glyph:'▲', t:0.80, label:'Critical Point'},
+  {id:'stove',    x:32,  y:38,  glyph:'▦', t:0.96, label:'Dangerous Equipment'}
+];
+
+// Paths (as SVG path 'd' strings) driving each robot around the same apartment.
+// Aligned: wide, deliberate berth around every hazard.
+// Unaligned: shorter/greedier path that clips through several hazards.
+const alignedPathD = "M 34,230 L 34,140 L 34,60 L 90,45 L 150,60 L 200,70 L 260,60 L 320,60 L 360,90 L 340,150 L 300,190 L 260,215 L 220,225 L 180,215 L 100,220 Z";
+const unalignedPathD = "M 34,230 L 40,205 L 50,190 L 34,150 L 60,90 L 34,40 L 90,30 L 160,55 L 210,42 L 260,45 L 330,38 L 360,80 L 330,150 L 260,150 L 220,205 L 260,215 L 180,210 L 100,210 Z";
+
+function buildPanel(svgId, pathD, kind){
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = "";
+  drawFloorplan(svg);
+  const ns = "http://www.w3.org/2000/svg";
+  const path = document.createElementNS(ns,'path');
+  path.setAttribute('d', pathD);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke', kind === 'aligned' ? '#57c29a' : '#e0636b');
+  path.setAttribute('stroke-width', 1.6);
+  path.setAttribute('stroke-dasharray', kind === 'aligned' ? '0' : '4 3');
+  path.setAttribute('opacity', 0.85);
+  svg.appendChild(path);
+  const dot = document.createElementNS(ns,'circle');
+  dot.setAttribute('r', 6);
+  dot.setAttribute('fill', kind === 'aligned' ? '#57c29a' : '#e0636b');
+  dot.setAttribute('stroke', '#0b1117');
+  dot.setAttribute('stroke-width', 1.5);
+  svg.appendChild(dot);
+  return {svg, path, dot};
+}
+
+const alignedPanel = buildPanel('svgAligned', alignedPathD, 'aligned');
+const unalignedPanel = buildPanel('svgUnaligned', unalignedPathD, 'unaligned');
+
+// cost schedules: which hazards are actually "hit" (cost event) for each policy,
+// scaled illustratively toward the paper's Safety-Fetch CC numbers (ISA 8.08 / FLaRe 43.36)
+const alignedCostEvents = {corner:0, blind:0, fragile:1.2, critical:0, stove:0}; // mostly avoids everything
+const unalignedCostEvents = {corner:9.5, blind:8.0, fragile:9.5, critical:7.5, stove:8.86};
+
+const ALIGNED_TOTAL = Object.values(alignedCostEvents).reduce((a,b)=>a+b,0);
+const UNALIGNED_TOTAL = Object.values(unalignedCostEvents).reduce((a,b)=>a+b,0);
+const MAX_BAR = 43.36; // ceiling used for both bars so the contrast reads clearly
+
+let runActive = false;
+let runStart = null;
+const RUN_DURATION = 6500; // ms
+
+function flashHazard(svg, id, isHit){
+  const mark = svg.querySelector('circle[data-id="'+id+'"]');
+  if(!mark) return;
+  mark.setAttribute('fill', isHit ? '#e0636b55' : '#57c29a33');
+  mark.setAttribute('stroke', isHit ? '#e0636b' : '#57c29a');
+  setTimeout(()=>{ mark.setAttribute('fill','#e8934a22'); mark.setAttribute('stroke','#e8934a'); }, 900);
+}
+
+function runFrame(ts){
+  if(!runActive) return;
+  if(runStart === null) runStart = ts;
+  const elapsed = ts - runStart;
+  let t = Math.min(elapsed / RUN_DURATION, 1);
+
+  moveAlong(alignedPanel, t);
+  moveAlong(unalignedPanel, t);
+
+  // trigger cost events as robots pass hazard t-fractions
+  hazards.forEach(h => {
+    const key = 'fired_'+h.id;
+    if(!window.__firedAligned) window.__firedAligned = {};
+    if(!window.__firedUnaligned) window.__firedUnaligned = {};
+    if(t >= h.t && !window.__firedAligned[h.id]){
+      window.__firedAligned[h.id] = true;
+      const c = alignedCostEvents[h.id] || 0;
+      window.__alignedCost = (window.__alignedCost||0) + c;
+      flashHazard(alignedPanel.svg, h.id, c > 0.05);
+      updateNumbers();
+    }
+    if(t >= h.t && !window.__firedUnaligned[h.id]){
+      window.__firedUnaligned[h.id] = true;
+      const c = unalignedCostEvents[h.id] || 0;
+      window.__unalignedCost = (window.__unalignedCost||0) + c;
+      flashHazard(unalignedPanel.svg, h.id, c > 0.05);
+      updateNumbers();
+    }
+  });
+
+  if(t < 1){
+    requestAnimationFrame(runFrame);
+  } else {
+    runActive = false;
+    document.getElementById('runBtn').textContent = '▶ Run both policies';
+  }
+}
+
+function moveAlong(panel, t){
+  const len = panel.path.getTotalLength();
+  const pt = panel.path.getPointAtLength(len * t);
+  panel.dot.setAttribute('cx', pt.x);
+  panel.dot.setAttribute('cy', pt.y);
+}
+
+function updateNumbers(){
+  const a = window.__alignedCost || 0;
+  const u = window.__unalignedCost || 0;
+  document.getElementById('alignedNum').textContent = a.toFixed(2);
+  document.getElementById('unalignedNum').textContent = u.toFixed(2);
+  document.getElementById('alignedBar').style.width = Math.min((a/MAX_BAR)*100,100)+'%';
+  document.getElementById('unalignedBar').style.width = Math.min((u/MAX_BAR)*100,100)+'%';
+}
+
+function resetRun(){
+  runActive = false;
+  runStart = null;
+  window.__firedAligned = {};
+  window.__firedUnaligned = {};
+  window.__alignedCost = 0;
+  window.__unalignedCost = 0;
+  moveAlong(alignedPanel, 0);
+  moveAlong(unalignedPanel, 0);
+  updateNumbers();
+  document.getElementById('runBtn').textContent = '▶ Run both policies';
+}
+
+document.getElementById('runBtn').addEventListener('click', () => {
+  if(runActive) return;
+  resetRun();
+  runActive = true;
+  requestAnimationFrame(runFrame);
+});
+document.getElementById('resetRunBtn').addEventListener('click', resetRun);
+
+// initial paint
+resetRun();
+</script>
+</body>
+</html>
