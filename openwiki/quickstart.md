@@ -18,7 +18,7 @@ The architecture is not a single monolithic system but a layered set of safety c
 *   **Domain Concepts:** Defining what "unsafe" means for an embodied agent (physical constraints, object handling, etc.).
 *   **Inference-Time Filtering:** Implementing fast, run-time checks on candidate actions before execution (e.g., VLESA).
 *   **Policy Alignment:** Training the core model to inherently prefer safe behavior through constrained optimization (e.g., SafeVLA).
-*   **World Modeling:** Using predictive simulation to identify and avoid dangerous outcomes before they occur in reality (e.g., SafeDojo).
+*   **World Modeling:** Using predictive simulation to identify and avoid dangerous outcomes before they occur in reality (e.g., SafeDojo via [World Model Safety](openwiki/mechanisms/world_modeling_safety.md), or general prediction like World-Env).
 
 ---
 *This documentation is continually updated as VLA safety research advances.*

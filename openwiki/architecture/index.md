@@ -22,7 +22,7 @@ A typical interaction sequence proceeds as follows, with mandatory checks at thr
 | :--- | :--- | :--- | :--- | :--- |
 | **Core VLA Policy** | Generates the intended action $\mathbf{a}$. | Generation (Step 2) | Behavioral planning. | N/A (The subject model) |
 | **Inference Filter** | Real-time veto of immediate, unsafe actions. | Pre-Execution (Step 3) | Immediate physical hazards/violations. | [VLESA](https://arxiv.org/abs/2606.03954), [Attention Filter](https://arxiv.org/abs/2606.09749) |
-| **World Model** | Simulation of future states and costs. | Predictive (Step 4) | Long-term planning failure, cascading risk. | [SafeDojo](https://arxiv.org/abs/2606.20698), [World-Env](https://arxiv.org/abs/2509.24948) |
+| **World Model** | Simulation of future states and costs using predictive modeling. | Predictive (Step 4) | Long-term planning failure, cascading risk. | [SafeDojo](https://arxiv.org/abs/2606.20698), [World-Env](https://arxiv.org/abs/2509.24948). See [World Modeling Safety](openwiki/mechanisms/world_modeling_safety.md) for details. |
 | **Constrained Learner** | Optimizing the policy against safety risks. | Training Phase (Pre-Deployment) | Bias towards unsafe high-reward paths. | SafeVLA (NeurIPS, 2025) |
 
 ## 🛠️ Agent Workflow Guidance for Future Developers
