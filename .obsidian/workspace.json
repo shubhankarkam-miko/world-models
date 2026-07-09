@@ -1,0 +1,189 @@
+{
+  "main": {
+    "id": "01960df463ca4612",
+    "type": "split",
+    "children": [
+      {
+        "id": "dbdbd746d5fbed5b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0e78baf5e70ff508",
+            "type": "leaf",
+            "state": {
+              "type": "pdf",
+              "state": {
+                "file": "VLA-guardrails/19550_SafeVLA_Towards_Safety_A.pdf"
+              },
+              "icon": "lucide-file-text",
+              "title": "19550_SafeVLA_Towards_Safety_A"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "df607af02b73ce05",
+    "type": "split",
+    "children": [
+      {
+        "id": "33459aa91bdd665b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "84d38cc92cfe1985",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "298f436da62d9200",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "e1d3511acc6ddcc9",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "879e2908d6eb3d8d",
+    "type": "split",
+    "children": [
+      {
+        "id": "2827486aa882d0e3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a123bab26ce2afbe",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "VLA-guardrails/19550_SafeVLA_Towards_Safety_A.pdf",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for 19550_SafeVLA_Towards_Safety_A"
+            }
+          },
+          {
+            "id": "fe362c06eeb3644a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "VLA-guardrails/19550_SafeVLA_Towards_Safety_A.pdf",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 19550_SafeVLA_Towards_Safety_A"
+            }
+          },
+          {
+            "id": "f5e28024201cf1e6",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "1c59f595dce97193",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "0baa8f038419021c",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "VLA-guardrails/19550_SafeVLA_Towards_Safety_A.pdf",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 19550_SafeVLA_Towards_Safety_A"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "0e78baf5e70ff508",
+  "lastOpenFiles": [
+    "openwiki/architecture/workflow_and_architecture.md",
+    "VLA-guardrails/2509.24948v6.pdf"
+  ]
+}
