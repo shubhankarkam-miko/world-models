@@ -185,6 +185,15 @@
   },
   "active": "0e78baf5e70ff508",
   "lastOpenFiles": [
+    "VLA/Diffusion-robotics/paiworld2026-architecture.html",
+    "VLA/Diffusion-robotics/paiworld2026-report.md",
+    "VLA/Diffusion-robotics/paiworld2026-report.md.tmp.6400.bb4bdac1394f",
+    "VLA/Diffusion-robotics/2606.18375v2.pdf",
+    "VLA/Diffusion-robotics/openwiki/architecture/diffusion_policy.md",
+    "VLA/Diffusion-robotics/openwiki/architecture",
+    "VLA/Diffusion-robotics/openwiki/quickstart.md",
+    "VLA/Diffusion-robotics/openwiki/_plan.md",
+    "VLA/Diffusion-robotics/openwiki",
     "VLA/safety/openwiki/architecture/safedojo.md",
     "VLA/safety/openwiki/architecture/safety_comparison.md",
     "VLA/safety/openwiki/architecture/lima_safety.md",
@@ -211,15 +220,6 @@
     "VLA/openwiki/mechanisms/threats_and_benchmarks.md",
     "VLA/openwiki/operations/safety_requirements.md",
     "VLA/openwiki/operations",
-    "VLA/openwiki/architecture/vlesa_architecture.md",
-    "VLA/openwiki/testing/evaluation_strategy.md",
-    "VLA/openwiki/testing",
-    "VLA/openwiki/mechanisms/policy_alignment.md",
-    "VLA/openwiki/mechanisms/safety_overview.md",
-    "VLA/openwiki/mechanisms/dual_loop_defense.md",
-    "VLA/openwiki/mechanisms/index.md",
-    "VLA/openwiki/mechanisms",
-    "VLA/openwiki/architecture",
-    "VLA/openwiki"
+    "VLA/openwiki/architecture/vlesa_architecture.md"
   ]
 }

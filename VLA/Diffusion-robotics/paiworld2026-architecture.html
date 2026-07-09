@@ -1,0 +1,391 @@
+<title>PAIWorld — pathway + objective for multi-view 3D consistency</title>
+<style>
+  :root {
+    --bg: #0c0f11; --surface: #141a1c; --surface-2: #1b2325; --border: #283134;
+    --text: #e8eef0; --text-dim: #8a9a9c;
+    --accent: #5fc2b8; --accent-soft: rgba(95, 194, 184, 0.16);
+    --warm: #d99a5b; --warm-soft: rgba(217, 154, 91, 0.16);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f2f4f2; --surface: #ffffff; --surface-2: #e9ede9; --border: #d6dcd6;
+      --text: #1c2321; --text-dim: #5f6d68;
+      --accent: #1f8f82; --accent-soft: rgba(31,143,130,0.10);
+      --warm: #b06a2b; --warm-soft: rgba(176,106,43,0.10);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0f11; --surface: #141a1c; --surface-2: #1b2325; --border: #283134;
+    --text: #e8eef0; --text-dim: #8a9a9c; --accent: #5fc2b8; --accent-soft: rgba(95,194,184,0.16);
+    --warm: #d99a5b; --warm-soft: rgba(217,154,91,0.16);
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f4f2; --surface: #ffffff; --surface-2: #e9ede9; --border: #d6dcd6;
+    --text: #1c2321; --text-dim: #5f6d68; --accent: #1f8f82; --accent-soft: rgba(31,143,130,0.10);
+    --warm: #b06a2b; --warm-soft: rgba(176,106,43,0.10);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; display: flex; flex-direction: column; gap: 30px; }
+
+  header.hero { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 22px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 3.6vw, 38px); margin: 0; text-wrap: balance; }
+  .subhead { color: var(--text-dim); font-size: 15px; max-width: 76ch; }
+
+  h2 { font-family: var(--serif); margin: 0 0 12px; font-weight: 600; font-size: 19px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+
+  .stage-grid { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 18px; }
+  @media (max-width: 900px) { .stage-grid { grid-template-columns: 1fr; } }
+
+  /* pipeline diagram */
+  .diagram { display: flex; flex-direction: column; gap: 4px; }
+  .row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .row.center { justify-content: center; }
+  .arrow-down { text-align: center; color: var(--text-dim); font-size: 15px; margin: 2px 0; font-family: var(--mono); }
+
+  .box {
+    flex: 1 1 auto;
+    min-width: 130px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    transition: background 150ms, border-color 150ms, color 150ms;
+    cursor: pointer;
+  }
+  .box .box-title { font-weight: 700; font-size: 12.5px; color: var(--text); margin-bottom: 2px; }
+  .box .box-sub { font-family: var(--mono); font-size: 11px; }
+  .box.geo { border-color: var(--accent); }
+  .box.geo.lit { background: var(--accent-soft); }
+  .box.gen { border-color: var(--warm); }
+  .box.gen.lit { background: var(--warm-soft); }
+  .box.lit { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .box.frozen::after { content: " ❄"; }
+  .box.dit { flex: 1 1 100%; }
+  .subblocks { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; font-family: var(--mono); font-size: 10.5px; }
+  .subblocks span { border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px; background: var(--surface); }
+  .subblocks span.lit { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; border: 1px solid var(--border); }
+  .swatch.geo { background: var(--accent-soft); border-color: var(--accent); }
+  .swatch.gen { background: var(--warm-soft); border-color: var(--warm); }
+
+  .transport { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  button.ctrl { font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; }
+  button.ctrl:hover { border-color: var(--accent); color: var(--accent); }
+  button.ctrl.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  button.ctrl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .caption { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 13.5px; color: var(--text-dim); min-height: 40px; }
+  .caption strong { color: var(--text); }
+  .not-computed { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 10px; }
+
+  ol.pipeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ol.pipeline li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: background 120ms, border-color 120ms; }
+  ol.pipeline li:hover { background: var(--surface-2); }
+  ol.pipeline li.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .idx { font-family: var(--mono); font-size: 12px; color: var(--text-dim); width: 18px; padding-top: 2px; flex-shrink: 0; }
+  .block-label { font-weight: 600; font-size: 14px; }
+  .block-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .explain-drawer { margin-top: 14px; padding: 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13.5px; color: var(--text); min-height: 100px; }
+  .explain-drawer .drawer-title { font-weight: 700; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+
+  /* Geo-RoPE detail */
+  .georope-detail { margin-top: 8px; }
+  .vecsplit { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .vecpart { flex: 1 1 200px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }
+  .vecpart h3 { margin: 0 0 6px; font-size: 13px; font-family: var(--mono); color: var(--accent); }
+  .vecpart p { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+
+  /* ablation chart */
+  .chart-wrap { display: flex; align-items: flex-end; gap: 22px; height: 200px; padding: 10px 6px 0; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; max-width: 64px; border-radius: 6px 6px 0 0; background: var(--surface-2); border: 1px solid var(--border); position: relative; transition: height 500ms ease; }
+  .bar.hl { background: var(--accent-soft); border-color: var(--accent); }
+  .bar .bar-value { position: absolute; top: -20px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .bar-label { font-size: 11.5px; color: var(--text-dim); text-align: center; }
+  .dashed-ref { position: absolute; left: -6px; right: -6px; border-top: 2px dashed var(--warm); }
+  .dashed-ref-label { position: absolute; right: 0; top: -16px; font-family: var(--mono); font-size: 10.5px; color: var(--warm); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 20px; font-size: 12.5px; color: var(--text-dim); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer .cite { font-family: var(--mono); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <span class="eyebrow">Paper deep dive · arXiv:2606.18375</span>
+    <h1>PAIWorld: a pathway and an objective for multi-view 3D consistency</h1>
+    <p class="subhead">
+      Multi-view world models drift, warp, and misalign objects across cameras when views generate in isolation.
+      PAIWorld's claim: fixing this needs two things at once — a way for views to exchange information, and a
+      geometric signal telling that exchange what "correct" looks like. Neither alone is enough; the diagram below
+      follows one prediction step through both.
+    </p>
+  </header>
+
+  <section class="stage-grid">
+    <div class="panel">
+      <h2>One prediction step, branch by branch</h2>
+      <div class="diagram" id="diagram">
+        <div class="row">
+          <div class="box geo frozen" data-block="da3" id="box-da3">
+            <div class="box-title">Depth Anything 3</div>
+            <div class="box-sub">3D-aware feature extractor</div>
+          </div>
+          <div class="box gen" data-block="stvae" id="box-stvae">
+            <div class="box-title">ST-VAE + camera pose + view embedding</div>
+            <div class="box-sub">multi-view first-frame images → latent</div>
+          </div>
+          <div class="box gen" data-block="cond" id="box-cond">
+            <div class="box-title">Text / action input</div>
+            <div class="box-sub">AdaLN conditioning, spatial action maps</div>
+          </div>
+        </div>
+        <div class="arrow-down">↓ ↓ ↓</div>
+        <div class="row">
+          <div class="box dit gen" data-block="dit" id="box-dit">
+            <div class="box-title">Multi-View DiT block (repeated)</div>
+            <div class="subblocks">
+              <span data-sub="selfattn">temporal-spatial self-attn</span>
+              <span>MLP</span>
+              <span data-sub="crossattn">view-spatial cross-attn</span>
+              <span>MLP</span>
+            </div>
+          </div>
+        </div>
+        <div class="arrow-down">↓</div>
+        <div class="row center">
+          <div class="box gen" data-block="predicted" id="box-predicted" style="max-width:260px;">
+            <div class="box-title">Predicted latent</div>
+            <div class="box-sub">this step's output</div>
+          </div>
+        </div>
+        <div class="arrow-down">↙ &nbsp; &nbsp; &nbsp; &nbsp; ↘</div>
+        <div class="row">
+          <div class="box gen" data-block="flowloss" id="box-flowloss">
+            <div class="box-title">Flow-matching loss</div>
+            <div class="box-sub">vs. ST-VAE latent of the real future frame</div>
+          </div>
+          <div class="box geo" data-block="repa" id="box-repa">
+            <div class="box-title">Latent 3D-REPA loss</div>
+            <div class="box-sub">vs. DA3 latent — relational, anchor-sampled</div>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch geo"></span>geometric pathway / objective (teal)</span>
+        <span><span class="swatch gen"></span>generative backbone (amber)</span>
+        <span>❄ = frozen, not trained</span>
+      </div>
+      <div class="transport">
+        <button class="ctrl primary" id="playBtn">▶ Play dataflow</button>
+        <button class="ctrl" id="resetBtn">↺ Reset</button>
+      </div>
+      <div class="caption" id="diagramCaption">Press play, or click any block, to see how one future multi-view frame is produced and supervised.</div>
+      <p class="not-computed">Illustrative schematic redrawn from the paper's Figure 2 — no real weights or activations, for explanation only.</p>
+    </div>
+
+    <div class="panel">
+      <h2>What each block does</h2>
+      <ol class="pipeline" id="pipeline">
+        <li data-block="da3" tabindex="0"><span class="idx">1</span><div><div class="block-label">Depth Anything 3 (frozen)</div><div class="block-sub">supplies the 3D "ground truth" to distill</div></div></li>
+        <li data-block="stvae" tabindex="0"><span class="idx">2</span><div><div class="block-label">ST-VAE + pose + view embedding</div><div class="block-sub">where the model actually gets its input</div></div></li>
+        <li data-block="cond" tabindex="0"><span class="idx">3</span><div><div class="block-label">Text / action conditioning</div><div class="block-sub">what to generate, grounded in pixel space</div></div></li>
+        <li data-block="dit" tabindex="0"><span class="idx">4</span><div><div class="block-label">Multi-View DiT block <span style="color:var(--accent); font-weight:400;">— click to open Geo-RoPE</span></div><div class="block-sub">self-attention, then geometry-biased cross-view attention</div></div></li>
+        <li data-block="predicted" tabindex="0"><span class="idx">5</span><div><div class="block-label">Predicted latent</div><div class="block-sub">this step's output, checked two ways</div></div></li>
+        <li data-block="flowloss" tabindex="0"><span class="idx">6</span><div><div class="block-label">Flow-matching loss</div><div class="block-sub">is it a good future frame, period?</div></div></li>
+        <li data-block="repa" tabindex="0"><span class="idx">7</span><div><div class="block-label">Latent 3D-REPA loss</div><div class="block-sub">is it 3D-consistent, specifically?</div></div></li>
+      </ol>
+      <div class="explain-drawer" id="explain">
+        <div class="drawer-title">About this diagram</div>
+        <div id="explainBody">Click a block on the left, or an item in this list, for a plain-language explanation.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="georopeDetail" hidden>
+    <h2>Inside Geo-RoPE: why queries and keys are split in two</h2>
+    <p class="subhead" style="margin:0 0 4px;">
+      Every attention head's query and key vectors are split into two equal halves before rotation, so a
+      fine-grained per-pixel signal and a coarse per-view signal can't interfere with each other.
+    </p>
+    <div class="vecsplit">
+      <div class="vecpart">
+        <h3>ray subspace (half the dimensions)</h3>
+        <p>Rotated using the token's own <strong>3D ray direction</strong> — computed by unprojecting its pixel through that camera's intrinsics and rotating by the inverse camera rotation. Varies per pixel. This is what makes a token in one view and the corresponding token in another view rotate similarly when they observe the same 3D point.</p>
+      </div>
+      <div class="vecpart">
+        <h3>pose subspace (the other half)</h3>
+        <p>Rotated using a single 12-dimensional vector per view — Euler angles, translation, camera position, optical axis. Identical for every pixel in that view. This carries "which camera is this" without competing against the pixel-level ray signal.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Why both pillars: the ablation</h2>
+    <p class="subhead" style="margin:0 0 4px;">
+      MEt3R directly measures multi-view 3D reconstruction error — lower is better. Adding either component alone
+      helps a little; adding both helps far more than the two individual gains added together.
+    </p>
+    <div class="chart-wrap" id="chart"></div>
+    <div class="caption" style="border-top:none; padding-top:6px;">
+      <strong>0.93 + 0.72 = 1.65</strong> improvement expected if the two components simply added — the measured joint
+      improvement is <strong>2.64</strong>. The dashed line marks where an additive combination would land.
+    </div>
+  </section>
+
+  <footer>
+    <span>Generated for the full <a href="paiworld2026-report.md" style="color: var(--accent);">research report</a> on this paper.</span>
+    <span class="cite">The PAIWorld Team · Institute of AI for Industries, CAS · arXiv:2606.18375</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var EXPLAIN = {
+    da3: { t: "1 · Depth Anything 3 (frozen)", b: "A 3D foundation model trained under direct geometric supervision — it predicts depth, point maps, and camera poses across views, so its internal features already encode real 3D structure. PAIWorld never trains it; it only borrows its features as a distillation target, and also its camera pose estimates for Geo-RoPE." },
+    stvae: { t: "2 · ST-VAE + camera pose + view embedding", b: "The multi-view first-frame images are compressed by a spatial-temporal VAE into a compact latent. Camera pose and a learned view embedding are added in, so the model knows both what each view looked like and which camera produced it." },
+    cond: { t: "3 · Text / action conditioning", b: "Text is injected via AdaLN, modulating the DiT's layer-norm scale/shift. Actions are rendered as spatial action maps — e.g. an end-effector path projected into each camera's pixel space — and concatenated with the noisy latent, rather than encoded as an abstract vector." },
+    dit: { t: "4 · Multi-View DiT block", b: "Each block runs temporal-spatial self-attention (per view) followed by view-spatial cross-attention across views. The cross-attention queries and keys are rotated by Geo-RoPE using each view's own camera geometry first, so tokens observing the same 3D point across different views naturally attend to each other more strongly. Click again to see the Geo-RoPE split in detail." },
+    predicted: { t: "5 · Predicted latent", b: "The DiT block's output for this diffusion/flow step. It gets checked two separate ways: does it look like a good future frame at all (flow-matching loss), and separately, is its cross-view geometric structure actually correct (3D-REPA loss)?" },
+    flowloss: { t: "6 · Flow-matching loss", b: "The standard generative objective: the predicted latent is compared against the real future frame's own VAE latent. This alone says nothing about cross-view consistency — a model can satisfy it while still drifting objects between cameras." },
+    repa: { t: "7 · Latent 3D-REPA loss", b: "The predicted latent's token-to-token relational structure (via anchor-sampled cosine similarity) is compared against Depth Anything 3's relational structure for the same tokens, at both a within-frame and across-the-clip granularity. This is the signal that specifically penalizes geometric inconsistency, which the flow-matching loss alone would miss." }
+  };
+
+  var pipeline = document.getElementById("pipeline");
+  var explainTitle = document.querySelector("#explain .drawer-title");
+  var explainBody = document.getElementById("explainBody");
+  var georopeDetail = document.getElementById("georopeDetail");
+  var diagramCaption = document.getElementById("diagramCaption");
+
+  var boxIds = { da3: "box-da3", stvae: "box-stvae", cond: "box-cond", dit: "box-dit", predicted: "box-predicted", flowloss: "box-flowloss", repa: "box-repa" };
+
+  function clearLit() {
+    Object.values(boxIds).forEach(function (id) { document.getElementById(id).classList.remove("lit"); });
+    document.querySelectorAll(".subblocks span").forEach(function (s) { s.classList.remove("lit"); });
+  }
+
+  function selectBlock(key, opts) {
+    opts = opts || {};
+    var e = EXPLAIN[key];
+    if (e) {
+      explainTitle.textContent = e.t;
+      explainBody.textContent = e.b;
+    }
+    pipeline.querySelectorAll("li").forEach(function (li) { li.classList.toggle("selected", li.getAttribute("data-block") === key); });
+    if (!opts.keepLit) clearLit();
+    var boxEl = document.getElementById(boxIds[key]);
+    if (boxEl) boxEl.classList.add("lit");
+    if (key === "dit" && opts.toggleDetail) {
+      georopeDetail.hidden = !georopeDetail.hidden;
+      if (!georopeDetail.hidden) georopeDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  pipeline.querySelectorAll("li").forEach(function (li) {
+    li.addEventListener("click", function () { selectBlock(li.getAttribute("data-block"), { toggleDetail: true }); });
+    li.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); li.click(); } });
+  });
+  Object.keys(boxIds).forEach(function (key) {
+    document.getElementById(boxIds[key]).addEventListener("click", function () { selectBlock(key, { toggleDetail: key === "dit" }); });
+  });
+
+  // ---------- play dataflow ----------
+  var SEQUENCE = [
+    { keys: ["da3"], caption: "Depth Anything 3 reads the same multi-view images and produces its own 3D-aware features — kept entirely separate from the generative path." },
+    { keys: ["stvae", "cond"], caption: "Meanwhile, the generative path encodes the input frames (+ camera pose, view embedding) and the text/action conditioning." },
+    { keys: ["dit"], caption: "The Multi-View DiT block runs self-attention, then Geo-RoPE-biased cross-view attention, letting geometrically corresponding tokens across views talk to each other." },
+    { keys: ["predicted"], caption: "Both branches converge on a predicted latent for this step." },
+    { keys: ["flowloss"], caption: "Check 1: does the predicted latent look like a good future frame? (flow-matching loss, vs. the real future frame's own latent)" },
+    { keys: ["repa"], caption: "Check 2: is the predicted latent's cross-view relational structure 3D-consistent? (3D-REPA loss, vs. Depth Anything 3's relational structure)" }
+  ];
+  var playBtn = document.getElementById("playBtn");
+  var seqTimer = null, seqIndex = 0;
+
+  function resetDiagram() {
+    clearInterval(seqTimer);
+    clearLit();
+    seqIndex = 0;
+    playBtn.textContent = "▶ Play dataflow";
+    diagramCaption.textContent = "Press play, or click any block, to see how one future multi-view frame is produced and supervised.";
+    pipeline.querySelectorAll("li").forEach(function (li) { li.classList.remove("selected"); });
+  }
+
+  function playStep() {
+    if (seqIndex >= SEQUENCE.length) { clearInterval(seqTimer); playBtn.textContent = "▶ Play dataflow"; return; }
+    clearLit();
+    var step = SEQUENCE[seqIndex];
+    step.keys.forEach(function (k) { document.getElementById(boxIds[k]).classList.add("lit"); });
+    diagramCaption.innerHTML = "<strong>Step " + (seqIndex + 1) + "/" + SEQUENCE.length + ":</strong> " + step.caption;
+    seqIndex++;
+  }
+
+  playBtn.addEventListener("click", function () {
+    if (seqTimer) { clearInterval(seqTimer); seqTimer = null; playBtn.textContent = "▶ Play dataflow"; return; }
+    resetDiagram();
+    playBtn.textContent = "⏸ Playing…";
+    playStep();
+    seqTimer = setInterval(playStep, 1400);
+  });
+  document.getElementById("resetBtn").addEventListener("click", resetDiagram);
+
+  // ---------- ablation chart ----------
+  var chart = document.getElementById("chart");
+  var DATA = [
+    { label: "backbone\n(flat concat.)", value: 16.84, delta: 0, hl: false },
+    { label: "+ Cross-View\nAttn + Geo-RoPE", value: 15.91, delta: 0.93, hl: false },
+    { label: "+ Latent\n3D-REPA", value: 16.12, delta: 0.72, hl: false },
+    { label: "+ both", value: 14.20, delta: 2.64, hl: true }
+  ];
+  var maxDelta = 2.64;
+  var maxBarHeight = 160; // px, for delta=maxDelta
+  DATA.forEach(function (d) {
+    var col = document.createElement("div");
+    col.className = "bar-col";
+    var bar = document.createElement("div");
+    bar.className = "bar" + (d.hl ? " hl" : "");
+    var h = Math.max(6, (d.delta / maxDelta) * maxBarHeight);
+    bar.style.height = h + "px";
+    var val = document.createElement("div");
+    val.className = "bar-value";
+    val.textContent = "MEt3R " + d.value.toFixed(2);
+    bar.appendChild(val);
+    if (d.hl) {
+      var refLine = document.createElement("div");
+      refLine.className = "dashed-ref";
+      refLine.style.bottom = ((1.65 / maxDelta) * maxBarHeight) + "px";
+      var refLabel = document.createElement("div");
+      refLabel.className = "dashed-ref-label";
+      refLabel.textContent = "if additive (1.65)";
+      refLine.appendChild(refLabel);
+      bar.appendChild(refLine);
+    }
+    col.appendChild(bar);
+    var label = document.createElement("div");
+    label.className = "bar-label";
+    label.textContent = d.label;
+    col.appendChild(label);
+    chart.appendChild(col);
+  });
+
+  selectBlock("stvae");
+  clearLit();
+})();
+</script>
