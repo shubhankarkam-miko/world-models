@@ -1,0 +1,594 @@
+<title>Two paths to real-time diffusion: Muninn vs. FRMD</title>
+<style>
+  :root {
+    --bg: #0c0e12;
+    --surface: #14171d;
+    --surface-2: #1b1f28;
+    --border: #2a2f3a;
+    --text: #e9ebf0;
+    --text-dim: #8b93a3;
+    --accent: #6f9bd8;
+    --accent-soft: rgba(111, 155, 216, 0.16);
+    --reuse: #5fbf8f;
+    --reuse-soft: rgba(95, 191, 143, 0.16);
+    --recompute: #e2884f;
+    --recompute-soft: rgba(226, 136, 79, 0.18);
+    --forbidden: rgba(139, 147, 163, 0.12);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f3ef; --surface: #ffffff; --surface-2: #edeee8; --border: #dcded4;
+      --text: #1d2027; --text-dim: #666c78; --accent: #3568ab; --accent-soft: rgba(53,104,171,0.10);
+      --reuse: #2f8a5c; --reuse-soft: rgba(47,138,92,0.12); --recompute: #c8672f; --recompute-soft: rgba(200,103,47,0.14);
+      --forbidden: rgba(102,108,120,0.10);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0e12; --surface: #14171d; --surface-2: #1b1f28; --border: #2a2f3a;
+    --text: #e9ebf0; --text-dim: #8b93a3; --accent: #6f9bd8; --accent-soft: rgba(111,155,216,0.16);
+    --reuse: #5fbf8f; --reuse-soft: rgba(95,191,143,0.16); --recompute: #e2884f; --recompute-soft: rgba(226,136,79,0.18);
+    --forbidden: rgba(139,147,163,0.12);
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f3ef; --surface: #ffffff; --surface-2: #edeee8; --border: #dcded4;
+    --text: #1d2027; --text-dim: #666c78; --accent: #3568ab; --accent-soft: rgba(53,104,171,0.10);
+    --reuse: #2f8a5c; --reuse-soft: rgba(47,138,92,0.12); --recompute: #c8672f; --recompute-soft: rgba(200,103,47,0.14);
+    --forbidden: rgba(102,108,120,0.10);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; display: flex; flex-direction: column; gap: 28px; }
+
+  header.hero { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 22px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 3.6vw, 38px); margin: 0; text-wrap: balance; }
+  .subhead { color: var(--text-dim); font-size: 15px; max-width: 74ch; }
+
+  .tab-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .tab-switch { grid-template-columns: 1fr; } }
+  .tab-btn {
+    text-align: left;
+    padding: 16px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--sans);
+  }
+  .tab-btn .tab-title { font-family: var(--serif); font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .tab-btn .tab-sub { font-size: 13px; color: var(--text-dim); }
+  .tab-btn.active { border-color: var(--accent); background: var(--accent-soft); }
+  .tab-btn.active .tab-title { color: var(--accent); }
+  .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .tab-panel { display: none; flex-direction: column; gap: 20px; }
+  .tab-panel.active { display: flex; }
+
+  .stage-grid { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 18px; }
+  @media (max-width: 860px) { .stage-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .panel h2 { font-family: var(--serif); margin: 0 0 12px; font-weight: 600; font-size: 18px; }
+
+  /* Muninn timeline */
+  .timeline { display: flex; gap: 5px; overflow-x: auto; padding: 6px 2px 14px; }
+  .step-block {
+    flex-shrink: 0;
+    width: 42px;
+    height: 64px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    position: relative;
+    transition: background 150ms, border-color 150ms;
+  }
+  .step-block.forbidden::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, var(--forbidden) 0 4px, transparent 4px 8px);
+    border-radius: 6px;
+  }
+  .step-block .fill { width: 100%; border-radius: 5px 5px 0 0; }
+  .step-block.reuse .fill { background: var(--reuse-soft); border-top: 2px solid var(--reuse); }
+  .step-block.recompute .fill { background: var(--recompute-soft); border-top: 2px solid var(--recompute); }
+  .step-block.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .step-block .t-label { position: absolute; top: -18px; font-size: 10px; color: var(--text-dim); }
+
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; margin-top: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch.reuse { background: var(--reuse); }
+  .swatch.recompute { background: var(--recompute); }
+  .swatch.forbidden { background: var(--forbidden); border: 1px solid var(--border); }
+
+  .budget-bar-wrap { margin-top: 14px; }
+  .budget-label { font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px; display: flex; justify-content: space-between; font-family: var(--mono); }
+  .budget-bar { height: 10px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+  .budget-fill { height: 100%; background: var(--accent); transition: width 200ms; }
+
+  .transport { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  button.ctrl {
+    font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 13px;
+    border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer;
+  }
+  button.ctrl:hover { border-color: var(--accent); color: var(--accent); }
+  button.ctrl.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  button.ctrl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .knob-row { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .knob-row label { font-size: 12.5px; color: var(--text-dim); display: flex; flex-direction: column; gap: 4px; }
+  .knob-row input[type="range"] { accent-color: var(--accent); }
+  .knob-row .val { font-family: var(--mono); color: var(--text); }
+
+  .caption { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 13.5px; color: var(--text-dim); min-height: 40px; }
+  .caption strong { color: var(--text); }
+  .not-computed { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.03em; margin-top: 10px; }
+
+  .stat-row { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+  .stat { font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); }
+  .stat b { color: var(--text); font-size: 15px; display: block; font-variant-numeric: tabular-nums; }
+
+  ol.pipeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ol.pipeline li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: background 120ms, border-color 120ms; }
+  ol.pipeline li:hover { background: var(--surface-2); }
+  ol.pipeline li.active { background: var(--accent-soft); border-color: var(--accent); }
+  ol.pipeline li.selected { border-color: var(--text-dim); }
+  .idx { font-family: var(--mono); font-size: 12px; color: var(--text-dim); width: 18px; padding-top: 2px; flex-shrink: 0; }
+  ol.pipeline li.active .idx { color: var(--accent); }
+  .block-label { font-weight: 600; font-size: 14px; }
+  .block-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .explain-drawer { margin-top: 14px; padding: 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13.5px; color: var(--text); min-height: 100px; }
+  .explain-drawer .drawer-title { font-weight: 700; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+
+  /* FRMD race */
+  .race-track { display: flex; flex-direction: column; gap: 14px; margin-top: 6px; }
+  .lane { display: flex; flex-direction: column; gap: 6px; }
+  .lane-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+  .lane-steps { display: flex; gap: 5px; align-items: center; min-height: 40px; }
+  .race-step {
+    width: 34px; height: 34px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim); transition: background 150ms, border-color 150ms, color 150ms;
+  }
+  .race-step.lit.teacher { background: var(--recompute-soft); border-color: var(--recompute); color: var(--text); }
+  .race-step.lit.student { background: var(--reuse-soft); border-color: var(--reuse); color: var(--text); }
+  .race-arrow-shared { text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin: 2px 0; }
+  .decoder-box {
+    align-self: center;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    transition: background 150ms, border-color 150ms, color 150ms;
+  }
+  .decoder-box.lit { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 20px; font-size: 12.5px; color: var(--text-dim); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer .cite { font-family: var(--mono); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <span class="eyebrow">Paper deep dive · two papers, one bottleneck</span>
+    <h1>Two paths to real-time diffusion for robots</h1>
+    <p class="subhead">
+      Both papers attack the same problem — iterative denoising makes diffusion-based trajectory/action generation
+      too slow for real-time control — from opposite ends of the training-cost spectrum. Muninn wraps a pretrained
+      model with a certified caching policy, no retraining. FRMD retrains the sampler away entirely, collapsing it
+      into one forward pass.
+    </p>
+  </header>
+
+  <div class="tab-switch">
+    <button class="tab-btn active" data-tab="muninn">
+      <div class="tab-title">Muninn — cache or recompute?</div>
+      <div class="tab-sub">Training-free. Wraps any pretrained trajectory diffusion model with a statistically certified reuse policy.</div>
+    </button>
+    <button class="tab-btn" data-tab="frmd">
+      <div class="tab-title">FRMD — collapse N steps into 1</div>
+      <div class="tab-sub">Retrain once. Distills a multi-step teacher into a single-step consistency model.</div>
+    </button>
+  </div>
+
+  <!-- ================= MUNINN PANEL ================= -->
+  <section class="tab-panel active" id="panel-muninn">
+    <div class="stage-grid">
+      <div class="panel">
+        <h2>Denoising step timeline</h2>
+        <div class="timeline" id="timeline"></div>
+        <div class="legend">
+          <span><span class="swatch reuse"></span>reused cached output</span>
+          <span><span class="swatch recompute"></span>recomputed denoiser</span>
+          <span><span class="swatch forbidden"></span>reuse forbidden (prefix/suffix)</span>
+        </div>
+        <div class="budget-bar-wrap">
+          <div class="budget-label"><span>remaining deviation budget B_rem</span><span id="budgetReadout">0.080 / 0.080</span></div>
+          <div class="budget-bar"><div class="budget-fill" id="budgetFill" style="width:100%"></div></div>
+        </div>
+        <div class="transport">
+          <button class="ctrl primary" id="playBtn">▶ Play denoising</button>
+          <button class="ctrl" id="stepBtn">+ step</button>
+          <button class="ctrl" id="resetBtn">↺ Reset</button>
+        </div>
+        <div class="knob-row">
+          <label>deviation tolerance η_traj: <span class="val" id="etaVal">0.080</span>
+            <input type="range" id="etaSlider" min="0.02" max="0.16" step="0.005" value="0.08">
+          </label>
+        </div>
+        <div class="stat-row">
+          <div class="stat">denoiser evals<b id="statEvals">–</b></div>
+          <div class="stat">est. latency<b id="statLatency">–</b></div>
+          <div class="stat">realized deviation<b id="statDeviation">–</b></div>
+        </div>
+        <div class="caption" id="muninnCaption">Press play or step through the diffusion chain (t = N…0) to see Muninn decide, step by step, whether to reuse or recompute.</div>
+        <p class="not-computed">Illustrative schematic — scores, sensitivities, and the deviation trace are hand-authored to demonstrate the mechanism in Algorithm 1, not measured from a real model.</p>
+      </div>
+      <div class="panel">
+        <h2>How one step's decision is made</h2>
+        <ol class="pipeline" id="muninnPipeline">
+          <li data-block="probe" tabindex="0"><span class="idx">1</span><div><div class="block-label">Probe Ψ (cheap stem)</div><div class="block-sub">reads intermediate rep, skips the expensive core</div></div></li>
+          <li data-block="score" tabindex="0"><span class="idx">2</span><div><div class="block-label">Score s_t</div><div class="block-sub">how much the probe changed since step t+1</div></div></li>
+          <li data-block="sensitivity" tabindex="0"><span class="idx">3</span><div><div class="block-label">Sampler sensitivity L_t</div><div class="block-sub">analytic — how much an error here gets amplified later</div></div></li>
+          <li data-block="bound" tabindex="0"><span class="idx">4</span><div><div class="block-label">Conformal bound U(s_t)</div><div class="block-sub">calibrated, distribution-free upper bound on reuse error</div></div></li>
+          <li data-block="budget" tabindex="0"><span class="idx">5</span><div><div class="block-label">Budget check</div><div class="block-sub">would spending this cost exceed B_rem?</div></div></li>
+          <li data-block="decision" tabindex="0"><span class="idx">6</span><div><div class="block-label">Reuse or recompute</div><div class="block-sub">spend the budget, or pay full compute this step</div></div></li>
+        </ol>
+        <div class="explain-drawer" id="muninnExplain">
+          <div class="drawer-title">About this diagram</div>
+          <div id="muninnExplainBody">Click any block for a plain-language explanation, or press play to watch the decision pipeline light up one step at a time.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FRMD PANEL ================= -->
+  <section class="tab-panel" id="panel-frmd">
+    <div class="stage-grid">
+      <div class="panel">
+        <h2>Same trajectory, two ways to get there</h2>
+        <div class="race-track">
+          <div class="lane">
+            <div class="lane-label">teacher — multi-step ODE integration</div>
+            <div class="lane-steps" id="teacherSteps"></div>
+          </div>
+          <div class="lane">
+            <div class="lane-label">student — single-step consistency function</div>
+            <div class="lane-steps" id="studentSteps"></div>
+          </div>
+        </div>
+        <div class="race-arrow-shared">↓ both feed the same decoder ↓</div>
+        <div class="decoder-box" id="decoderBox">ProDMP decoder → action trajectory τ</div>
+        <div class="transport">
+          <button class="ctrl primary" id="raceBtn">▶ Play race</button>
+          <button class="ctrl" id="raceResetBtn">↺ Reset</button>
+        </div>
+        <div class="stat-row">
+          <div class="stat">teacher (MPD) latency<b id="teacherTime">0 ms</b></div>
+          <div class="stat">student (FRMD) latency<b id="studentTime">0 ms</b></div>
+          <div class="stat">speedup<b id="speedupStat">–</b></div>
+        </div>
+        <div class="caption" id="frmdCaption">Press play to race the teacher's iterative ODE solve against the student's one-shot forward pass, reported timings from the paper.</div>
+        <p class="not-computed">Illustrative schematic — step counts are compressed for display; timings shown are the paper's reported averages, not live measurements.</p>
+      </div>
+      <div class="panel">
+        <h2>How the student was trained</h2>
+        <ol class="pipeline" id="frmdPipeline">
+          <li data-block="teacher" tabindex="0"><span class="idx">1</span><div><div class="block-label">Teacher: encoder + ODE solver</div><div class="block-sub">K probability-flow-ODE steps → intermediate state</div></div></li>
+          <li data-block="target" tabindex="0"><span class="idx">2</span><div><div class="block-label">Target network f_θ⁻ (EMA)</div><div class="block-sub">reads the teacher-denoised intermediate state</div></div></li>
+          <li data-block="student" tabindex="0"><span class="idx">3</span><div><div class="block-label">Student f_θ</div><div class="block-sub">reads the raw, very-noisy input directly</div></div></li>
+          <li data-block="loss" tabindex="0"><span class="idx">4</span><div><div class="block-label">Consistency distillation loss</div><div class="block-sub">pushes student's and target's predictions to agree</div></div></li>
+          <li data-block="decoder" tabindex="0"><span class="idx">5</span><div><div class="block-label">ProDMP decoder (shared)</div><div class="block-sub">fixed, deterministic — weights → full trajectory</div></div></li>
+        </ol>
+        <div class="explain-drawer" id="frmdExplain">
+          <div class="drawer-title">About this diagram</div>
+          <div id="frmdExplainBody">Click any block for a plain-language explanation of how consistency distillation turns the teacher into a one-step student.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Generated for the full <a href="muninn-frmd-realtime-inference-report.md" style="color: var(--accent);">combined research report</a> covering both papers.</span>
+    <span class="cite">Puthumanaillam et al., arXiv:2605.09999 · Shi, Hu &amp; Jin, Front. Robot. AI 13:1751688</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- tab switching ----------
+  var tabBtns = document.querySelectorAll(".tab-btn");
+  var panels = { muninn: document.getElementById("panel-muninn"), frmd: document.getElementById("panel-frmd") };
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tabBtns.forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      Object.keys(panels).forEach(function (k) { panels[k].classList.remove("active"); });
+      panels[btn.getAttribute("data-tab")].classList.add("active");
+    });
+  });
+
+  // =========================================================
+  // MUNINN TAB
+  // =========================================================
+  var N = 12; // compressed step count for display
+  var FORBID_PREFIX = 2, FORBID_SUFFIX = 2;
+
+  function seeded(seed) { var x = Math.sin(seed * 999.7) * 10000; return x - Math.floor(x); }
+
+  // synthetic score per step t = N..1 (probe change magnitude): high near init, mostly decaying,
+  // with one deliberate mid-chain spike to show a recompute triggered by instability, not just monotonic decay.
+  var scores = [];
+  for (var t = N; t >= 1; t--) {
+    var base = 0.5 * Math.pow(t / N, 1.6);
+    var spike = (t === Math.round(N * 0.45)) ? 0.35 : 0;
+    scores[t] = Math.max(0.02, base + spike + (seeded(t) - 0.5) * 0.05);
+  }
+  // synthetic sensitivity L_t: larger for early (large t) steps, matching the paper's stated amplification pattern.
+  var sensitivity = {};
+  for (var t2 = N; t2 >= 1; t2--) sensitivity[t2] = 0.14 * Math.pow(t2 / N, 1.3) + 0.01;
+  // synthetic conformal bound U(s) = a mildly superlinear function of the score (regressor + residual quantile, illustrative)
+  function U(s) { return 0.9 * s + 0.15 * s * s + 0.02; }
+  function cost(t) { return sensitivity[t] * U(scores[t]); }
+
+  var mn = { t: N, budget: 0.08, budgetTotal: 0.08, running: false, decisions: {}, deviation: 0, evals: 1 };
+
+  var timelineEl = document.getElementById("timeline");
+  var blocks = {};
+  for (var s = N; s >= 0; s--) {
+    var b = document.createElement("div");
+    b.className = "step-block";
+    if (s > N - FORBID_PREFIX || s < FORBID_SUFFIX) b.classList.add("forbidden");
+    var label = document.createElement("span");
+    label.className = "t-label";
+    label.textContent = "t=" + s;
+    b.appendChild(label);
+    var fill = document.createElement("div");
+    fill.className = "fill";
+    b.appendChild(fill);
+    timelineEl.appendChild(b);
+    blocks[s] = b;
+  }
+
+  var MN_EXPLAIN = {
+    probe: { t: "1 · Probe Ψ", b: "Every modern denoiser splits into a cheap input-processing “stem” and an expensive “core”. Muninn runs only the stem to get an intermediate representation — negligible cost next to a full denoiser pass." },
+    score: { t: "2 · Score s_t", b: "s_t measures how much the probe's representation changed since the previous diffusion step. A small change means the model's output is likely stabilizing — a candidate for safe reuse." },
+    sensitivity: { t: "3 · Sampler sensitivity L_t", b: "Because the sampler update is affine (DDPM/DDIM-style), how much an error at step t gets amplified by every later step is known analytically in closed form — no calibration needed for this part." },
+    bound: { t: "4 · Conformal bound U(s_t)", b: "Calibrated offline via split-conformal prediction on paired full-compute vs. “ghost” reuse runs, U(s) turns a raw score into a distribution-free, high-probability upper bound on the actual reuse error." },
+    budget: { t: "5 · Budget check", b: "Muninn tracks a remaining deviation budget B_rem, starting at the user's chosen tolerance η_traj. It asks: would spending this step's upper-bounded cost still leave the budget non-negative?" },
+    decision: { t: "6 · Reuse or recompute", b: "If the budget covers it, Muninn reuses the cached denoiser output and spends the budget. Otherwise it pays full compute this step. The union of all per-step guarantees gives one certified bound: P(deviation > η_traj) ≤ α." }
+  };
+  var mnPipeline = document.getElementById("muninnPipeline");
+  var mnExplainTitle = document.querySelector("#muninnExplain .drawer-title");
+  var mnExplainBody = document.getElementById("muninnExplainBody");
+  mnPipeline.querySelectorAll("li").forEach(function (li) {
+    li.addEventListener("click", function () {
+      var key = li.getAttribute("data-block");
+      mnPipeline.querySelectorAll("li").forEach(function (o) { o.classList.remove("selected"); });
+      li.classList.add("selected");
+      mnExplainTitle.textContent = MN_EXPLAIN[key].t;
+      mnExplainBody.textContent = MN_EXPLAIN[key].b;
+    });
+    li.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); li.click(); } });
+  });
+
+  function setMnActive(keys) {
+    mnPipeline.querySelectorAll("li").forEach(function (li) {
+      li.classList.toggle("active", keys.indexOf(li.getAttribute("data-block")) !== -1);
+    });
+  }
+
+  var etaSlider = document.getElementById("etaSlider");
+  var etaVal = document.getElementById("etaVal");
+  var budgetFill = document.getElementById("budgetFill");
+  var budgetReadout = document.getElementById("budgetReadout");
+  var caption = document.getElementById("muninnCaption");
+  var playBtn = document.getElementById("playBtn");
+
+  function resetMn() {
+    mn.t = N;
+    mn.budgetTotal = parseFloat(etaSlider.value);
+    mn.budget = mn.budgetTotal;
+    mn.decisions = {};
+    mn.deviation = 0;
+    mn.evals = 0;
+    mn.running = false;
+    playBtn.textContent = "▶ Play denoising";
+    for (var s = 0; s <= N; s++) {
+      blocks[s].classList.remove("reuse", "recompute", "current");
+      blocks[s].querySelector(".fill").style.height = "0%";
+    }
+    renderMn();
+  }
+
+  function stepMn() {
+    if (mn.t < 0) return;
+    var t = mn.t;
+    var forbidden = (t > N - FORBID_PREFIX) || (t < FORBID_SUFFIX);
+    var isFirst = (t === N);
+    var c = (!isFirst && !forbidden) ? cost(t) : Infinity;
+    var willReuse = !isFirst && !forbidden && c <= mn.budget;
+
+    setMnActive(["probe", "score"]);
+    setTimeout(function () { if (!forbidden && !isFirst) setMnActive(["sensitivity", "bound"]); }, 120);
+    setTimeout(function () { setMnActive(["budget", "decision"]); }, 240);
+
+    var block = blocks[t];
+    block.classList.add("current");
+    if (t < N) blocks[t + 1] && blocks[t + 1].classList.remove("current");
+
+    if (willReuse) {
+      block.classList.add("reuse");
+      mn.budget -= c;
+      mn.deviation += 0.6 * scores[t] * sensitivity[t]; // synthetic realized error, kept below the upper bound by construction
+      mn.decisions[t] = "reuse";
+    } else {
+      block.classList.add("recompute");
+      mn.evals += 1;
+      mn.decisions[t] = "recompute";
+    }
+    block.querySelector(".fill").style.height = Math.round(20 + 60 * (t <= N ? (scores[t] || 0.3) : 0.3)) + "%";
+
+    if (isFirst) mn.evals = 1;
+    mn.t -= 1;
+    renderMn();
+
+    if (t === 0) { mn.running = false; playBtn.textContent = "▶ Play denoising"; blocks[0].classList.remove("current"); }
+  }
+
+  function renderMn() {
+    var pct = Math.max(0, Math.min(100, (mn.budget / mn.budgetTotal) * 100));
+    budgetFill.style.width = pct + "%";
+    budgetReadout.textContent = Math.max(0, mn.budget).toFixed(3) + " / " + mn.budgetTotal.toFixed(3);
+    document.getElementById("statEvals").textContent = mn.evals + " / " + (N + 1);
+    document.getElementById("statLatency").textContent = "~" + Math.round((mn.evals / (N + 1)) * 100) + "% of full";
+    document.getElementById("statDeviation").textContent = mn.deviation.toFixed(4) + (mn.deviation > mn.budgetTotal ? " ⚠" : " ✓ within η");
+    if (mn.t === N) {
+      caption.innerHTML = "<strong>t = N:</strong> the plan is fresh noise — no prior probe exists, so step N always recomputes.";
+    } else if (mn.t < 0) {
+      caption.innerHTML = "<strong>Done.</strong> " + mn.evals + " of " + (N + 1) + " steps recomputed the denoiser; the rest reused cached outputs, and the (synthetic) realized deviation stayed within the certified budget.";
+    } else {
+      var last = mn.decisions[mn.t + 1];
+      caption.innerHTML = last === "reuse"
+        ? "<strong>t = " + (mn.t + 1) + ":</strong> score was low, cost fit the remaining budget → reused the cached denoiser output."
+        : "<strong>t = " + (mn.t + 1) + ":</strong> score was high, in a forbidden zone, or the cost would exceed the budget → recomputed.";
+    }
+  }
+
+  etaSlider.addEventListener("input", function () { etaVal.textContent = parseFloat(etaSlider.value).toFixed(3); resetMn(); });
+  document.getElementById("stepBtn").addEventListener("click", function () { mn.running = false; playBtn.textContent = "▶ Play denoising"; stepMn(); });
+  document.getElementById("resetBtn").addEventListener("click", resetMn);
+
+  var mnTimer = null;
+  playBtn.addEventListener("click", function () {
+    if (mn.t < 0) resetMn();
+    mn.running = !mn.running;
+    playBtn.textContent = mn.running ? "⏸ Pause" : "▶ Play denoising";
+    if (mn.running) {
+      mnTimer = setInterval(function () {
+        if (!mn.running || mn.t < 0) { clearInterval(mnTimer); return; }
+        stepMn();
+        if (mn.t < 0) { clearInterval(mnTimer); }
+      }, 550);
+    } else {
+      clearInterval(mnTimer);
+    }
+  });
+
+  resetMn();
+
+  // =========================================================
+  // FRMD TAB
+  // =========================================================
+  var TEACHER_STEPS = 8; // compressed visual count standing in for the full multi-step ODE solve
+  var TEACHER_MS = 168.6, STUDENT_MS = 17.2;
+
+  var teacherLane = document.getElementById("teacherSteps");
+  var studentLane = document.getElementById("studentSteps");
+  for (var i = 0; i < TEACHER_STEPS; i++) {
+    var rs = document.createElement("div");
+    rs.className = "race-step teacher";
+    rs.textContent = i + 1;
+    teacherLane.appendChild(rs);
+  }
+  var studentStep = document.createElement("div");
+  studentStep.className = "race-step student";
+  studentStep.textContent = "1";
+  studentLane.appendChild(studentStep);
+
+  var decoderBox = document.getElementById("decoderBox");
+  var teacherTimeEl = document.getElementById("teacherTime");
+  var studentTimeEl = document.getElementById("studentTime");
+  var speedupEl = document.getElementById("speedupStat");
+  var frmdCaption = document.getElementById("frmdCaption");
+  var raceBtn = document.getElementById("raceBtn");
+  var raceTimer = null;
+
+  function resetRace() {
+    clearInterval(raceTimer);
+    teacherLane.querySelectorAll(".race-step").forEach(function (el) { el.classList.remove("lit"); });
+    studentStep.classList.remove("lit");
+    decoderBox.classList.remove("lit");
+    teacherTimeEl.textContent = "0 ms";
+    studentTimeEl.textContent = "0 ms";
+    speedupEl.textContent = "–";
+    raceBtn.textContent = "▶ Play race";
+    frmdCaption.textContent = "Press play to race the teacher's iterative ODE solve against the student's one-shot forward pass, reported timings from the paper.";
+  }
+
+  function playRace() {
+    resetRace();
+    raceBtn.textContent = "⏸ Racing…";
+    var teacherSteps = Array.from(teacherLane.querySelectorAll(".race-step"));
+    var i = 0;
+    // student fires immediately
+    setTimeout(function () {
+      studentStep.classList.add("lit");
+      studentTimeEl.textContent = STUDENT_MS.toFixed(1) + " ms";
+    }, 80);
+    raceTimer = setInterval(function () {
+      if (i >= teacherSteps.length) {
+        clearInterval(raceTimer);
+        decoderBox.classList.add("lit");
+        teacherTimeEl.textContent = TEACHER_MS.toFixed(1) + " ms";
+        speedupEl.textContent = (TEACHER_MS / STUDENT_MS).toFixed(1) + "×";
+        frmdCaption.innerHTML = "<strong>Same trajectory, ~" + (TEACHER_MS / STUDENT_MS).toFixed(0) + "× apart:</strong> the teacher needed " + teacherSteps.length + "+ ODE-solver steps (compressed here for display); the consistency-distilled student reached the same decoder in one forward pass.";
+        raceBtn.textContent = "▶ Play race";
+        return;
+      }
+      teacherSteps[i].classList.add("lit");
+      teacherTimeEl.textContent = Math.round((i + 1) / teacherSteps.length * TEACHER_MS) + " ms";
+      i++;
+    }, 140);
+  }
+
+  raceBtn.addEventListener("click", function () {
+    if (raceBtn.textContent.indexOf("Racing") !== -1) return;
+    playRace();
+  });
+  document.getElementById("raceResetBtn").addEventListener("click", resetRace);
+
+  var FRMD_EXPLAIN = {
+    teacher: { t: "1 · Teacher: encoder + ODE solver", b: "The teacher diffusion model denoises in movement-primitive weight space, not raw action space. At inference it integrates the probability-flow ODE with a high-order solver over many steps to produce a clean set of trajectory weights." },
+    target: { t: "2 · Target network f_θ⁻ (EMA)", b: "During distillation, a copy of the student's architecture — updated only as an exponential moving average of the student's own weights, never trained directly — reads a teacher-denoised intermediate state and provides a stable training target." },
+    student: { t: "3 · Student f_θ", b: "The student is trained to predict the same clean output directly from a much noisier input than the target sees. Both networks start from the pretrained teacher's weights, so the student begins training already producing valid motions." },
+    loss: { t: "4 · Consistency distillation loss", b: "The loss pushes the student's noisy-input prediction to match the target's teacher-informed prediction — enforcing that different points along the same probability-flow-ODE trajectory map to the same clean output. This is what lets one forward pass replace the whole ODE integration at test time." },
+    decoder: { t: "5 · ProDMP decoder (shared)", b: "A fixed, deterministic decoder — identical for teacher and student — expands predicted movement-primitive weights into the full action trajectory via a closed-form basis-function expansion. Its structure is what gives FRMD's output built-in smoothness." }
+  };
+  var frmdPipeline = document.getElementById("frmdPipeline");
+  var frmdExplainTitle = document.querySelector("#frmdExplain .drawer-title");
+  var frmdExplainBody = document.getElementById("frmdExplainBody");
+  frmdPipeline.querySelectorAll("li").forEach(function (li) {
+    li.addEventListener("click", function () {
+      var key = li.getAttribute("data-block");
+      frmdPipeline.querySelectorAll("li").forEach(function (o) { o.classList.remove("selected"); });
+      li.classList.add("selected");
+      frmdExplainTitle.textContent = FRMD_EXPLAIN[key].t;
+      frmdExplainBody.textContent = FRMD_EXPLAIN[key].b;
+    });
+    li.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); li.click(); } });
+  });
+})();
+</script>

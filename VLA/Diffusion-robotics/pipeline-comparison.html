@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Two Ways to Let RL Touch a Diffusion Planner</title>
+<style>
+  :root{
+    --bg:#0B0E14;
+    --panel:#11151F;
+    --panel-border:#232938;
+    --grid:#161B27;
+    --text:#E7E9EE;
+    --muted:#8B93A3;
+    --a:#E8A548;
+    --a-dim:#5C4726;
+    --b:#49C6E5;
+    --b-dim:#1F4650;
+    --mono:'SF Mono','Roboto Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    padding:32px 20px 60px;
+  }
+  .page{max-width:1180px;margin:0 auto;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:var(--mono);
+    font-weight:600;
+    font-size:clamp(22px,3.4vw,34px);
+    line-height:1.15;
+    margin:0 0 12px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:14.5px;
+    line-height:1.6;
+    max-width:680px;
+    margin:0 0 28px;
+  }
+  .sub b{color:var(--text);font-weight:600;}
+  .legend{
+    display:flex;gap:18px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    margin-bottom:28px;padding-bottom:20px;
+    border-bottom:1px dashed var(--panel-border);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .dot.a{background:var(--a);}
+  .dot.b{background:var(--b);}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media (max-width:880px){.panels{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:3px;
+    padding:22px 20px 20px;
+    position:relative;
+  }
+  .panel[data-accent="a"]{border-top:2px solid var(--a);}
+  .panel[data-accent="b"]{border-top:2px solid var(--b);}
+
+  .panel-tag{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;
+    color:var(--bg);padding:3px 8px;border-radius:2px;display:inline-block;margin-bottom:12px;
+    font-weight:700;
+  }
+  .panel[data-accent="a"] .panel-tag{background:var(--a);}
+  .panel[data-accent="b"] .panel-tag{background:var(--b);}
+
+  .panel h2{font-size:17px;margin:0 0 6px;font-weight:600;}
+  .panel .panel-sub{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 20px;min-height:52px;}
+
+  .flow{display:flex;flex-direction:column;align-items:stretch;gap:0;margin-bottom:8px;}
+
+  .node{
+    border:1px solid var(--panel-border);
+    background:#0D1119;
+    border-radius:3px;
+    padding:11px 13px;
+    font-size:13px;
+    cursor:pointer;
+    transition:border-color .25s, background .25s, transform .15s;
+    position:relative;
+  }
+  .node:hover{transform:translateX(2px);}
+  .node .node-title{font-weight:600;font-size:13px;margin-bottom:2px;}
+  .node .node-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+  .node:focus-visible{outline:2px solid var(--text);outline-offset:2px;}
+
+  .panel[data-accent="a"] .node.active{border-color:var(--a);background:#1A140A;box-shadow:0 0 0 1px var(--a-dim);}
+  .panel[data-accent="b"] .node.active{border-color:var(--b);background:#0A181C;box-shadow:0 0 0 1px var(--b-dim);}
+
+  .node.guidance-point{border-style:dashed;}
+  .panel[data-accent="a"] .node.guidance-point{border-color:var(--a-dim);}
+  .panel[data-accent="b"] .node.guidance-point{border-color:var(--b-dim);}
+
+  .connector{
+    height:26px;
+    margin-left:22px;
+    width:1px;
+    border-left:2px dashed var(--panel-border);
+    position:relative;
+    transition:border-color .25s;
+  }
+  .connector::after{
+    content:'';
+    position:absolute;
+    left:-4px;top:100%;
+    border:4px solid transparent;
+    border-top-color:var(--panel-border);
+    transition:border-top-color .25s;
+  }
+  .panel[data-accent="a"] .connector.flowed{border-left-color:var(--a);}
+  .panel[data-accent="a"] .connector.flowed::after{border-top-color:var(--a);}
+  .panel[data-accent="b"] .connector.flowed{border-left-color:var(--b);}
+  .panel[data-accent="b"] .connector.flowed::after{border-top-color:var(--b);}
+
+  .loopback{
+    font-family:var(--mono);font-size:10.5px;color:var(--muted);
+    margin:6px 0 14px 22px;padding-left:14px;
+    border-left:1px dotted var(--panel-border);
+  }
+
+  .controls{display:flex;gap:8px;margin:18px 0 4px;flex-wrap:wrap;}
+  button{
+    font-family:var(--mono);font-size:11.5px;
+    background:none;border:1px solid var(--panel-border);color:var(--text);
+    padding:7px 12px;border-radius:2px;cursor:pointer;letter-spacing:.02em;
+    transition:border-color .2s, color .2s;
+  }
+  .panel[data-accent="a"] button:hover{border-color:var(--a);color:var(--a);}
+  .panel[data-accent="b"] button:hover{border-color:var(--b);color:var(--b);}
+  button:focus-visible{outline:2px solid var(--text);outline-offset:1px;}
+
+  .step-count{font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;margin-left:auto;}
+
+  .explain-slot{
+    margin-top:16px;padding:13px 14px;
+    background:#0A0D14;border:1px solid var(--panel-border);border-radius:3px;
+    font-size:12.8px;line-height:1.55;color:var(--muted);min-height:64px;
+  }
+  .explain-slot .explain-title{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;display:block;margin-bottom:5px;}
+
+  .seam-note{
+    margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--muted);
+    padding:10px 12px;border:1px dashed var(--panel-border);border-radius:3px;
+  }
+  .panel[data-accent="a"] .seam-note b{color:var(--a);}
+  .panel[data-accent="b"] .seam-note b{color:var(--b);}
+
+  @media (prefers-reduced-motion: reduce){
+    .node, .connector, .connector::after, button{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Schematic — Paper A vs. Paper B</p>
+  <h1>Two ways to let RL touch a diffusion planner</h1>
+  <p class="sub">Both papers put a diffusion model in charge of proposing trajectories. They disagree on <b>when</b> the reinforcement-learning signal is allowed to act on that proposal — after it's finished, or at every single step while it's still being generated. Step through each pipeline to see where.</p>
+
+  <div class="legend">
+    <span><span class="dot a"></span> Paper A — generate once, select once</span>
+    <span><span class="dot b"></span> Paper B — generate while steering, every step</span>
+    <span style="opacity:.7">— dashed border = the block where the RL/MARL signal actually acts —</span>
+  </div>
+
+  <div class="panels">
+
+    <!-- PANEL A -->
+    <section class="panel" data-accent="a" id="panelA">
+      <span class="panel-tag">PAPER A</span>
+      <h2>Generate → Select</h2>
+      <p class="panel-sub">Diffusion proposes K candidate sub-paths for the upcoming horizon window; a SAC policy scores the finished set and picks one. The diffusion process itself never sees the RL signal.</p>
+
+      <div class="flow" id="flowA"></div>
+      <div class="loopback">↺ execute sub-path → shift horizon → repeat from State</div>
+
+      <div class="controls">
+        <button data-panel="A" data-do="step">Step →</button>
+        <button data-panel="A" data-do="play">Play</button>
+        <button data-panel="A" data-do="reset">Reset</button>
+        <span class="step-count" id="countA">0 / 6</span>
+      </div>
+
+      <div class="explain-slot" id="explainA"><span class="explain-title">Click a block</span>Or step through the flow above — this panel will explain whatever's active.</div>
+
+      <div class="seam-note">1× per horizon window — <b>SAC selects</b> after generation is already complete. The candidate set is fixed before RL ever sees it.</div>
+    </section>
+
+    <!-- PANEL B -->
+    <section class="panel" data-accent="b" id="panelB">
+      <span class="panel-tag">PAPER B</span>
+      <h2>Generate ← Guided</h2>
+      <p class="panel-sub">Each robot denoises its own trajectory independently, but a centralized MARL critic's gradient is injected into every agent's denoising mean at every reverse-diffusion step — before the trajectory is finished.</p>
+
+      <div class="flow" id="flowB"></div>
+      <div class="loopback">↺ repeat guided reverse step for t = T … 1</div>
+
+      <div class="controls">
+        <button data-panel="B" data-do="step">Step →</button>
+        <button data-panel="B" data-do="play">Play</button>
+        <button data-panel="B" data-do="reset">Reset</button>
+        <span class="step-count" id="countB">0 / 6</span>
+      </div>
+
+      <div class="explain-slot" id="explainB"><span class="explain-title">Click a block</span>Or step through the flow above — this panel will explain whatever's active.</div>
+
+      <div class="seam-note">T× per trajectory — <b>the value gradient is injected</b> at every one of the ~256 denoising steps, for every agent, before the trajectory exists.</div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const dataA = [
+  {id:'a1', title:'State', meta:'Δgoal · clearance · line-of-sight · dynamics',
+   text:'The environment reports UAV position, goal, obstacle clearance, a line-of-sight flag, and average nearby-obstacle speed. This is the context the diffusion model conditions on.'},
+  {id:'a2', title:'Diffusion Denoiser (Transformer)', meta:'K = 12 candidate sub-paths / step',
+   text:'A Transformer denoiser proposes K short candidate sub-paths for just the upcoming receding-horizon window — not the whole trajectory.'},
+  {id:'a3', title:'Candidate Attributes', meta:'uncertainty · collision prob. · length',
+   text:'Each candidate is tagged with an uncertainty score (MC-dropout variance), a collision probability (Monte-Carlo check), and its length — features, not actions.'},
+  {id:'a4', title:'SAC Selector', meta:'guidance point — discrete argmax over K', guidance:true,
+   text:'A max-entropy SAC policy outputs a K-dimensional score vector over the already-generated candidates and argmax-selects one. This is the only point where RL touches the diffusion output — and by this point the diffusion sampling is finished. Nothing is fed back into the denoiser.'},
+  {id:'a5', title:'Shield', meta:'smoothing · lateral offset on grazes',
+   text:'A lightweight, non-learned safety layer smooths the selected sub-path and nudges it laterally if it detects a near-miss — independent of both the diffusion model and the RL policy.'},
+  {id:'a6', title:'Execute & Update State', meta:'receding horizon',
+   text:'The selected sub-path is executed, the horizon shifts forward, and the whole loop — new state, new K candidates, new selection — repeats.'},
+];
+
+const dataB = [
+  {id:'b1', title:'Init & Inpaint Boundaries', meta:'per agent: τ_T ~ N(0,I), fix start/goal',
+   text:'Every robot starts its own trajectory from pure Gaussian noise, independently. Start and goal are enforced immediately by inpainting — this repeats at every step to keep boundary conditions fixed.'},
+  {id:'b2', title:'Decentralized Denoising', meta:'shared diffusion prior, sampled independently',
+   text:'Each agent computes its own denoising mean μ_θ(τ_t^i, t, c^i) from the same shared, pre-trained diffusion model — no communication between agents at this point.'},
+  {id:'b3', title:'Centralized Value Gradient', meta:'guidance point — repeats every step t', guidance:true,
+   text:'The per-agent trajectories at step t are stacked into a joint state X_t. A centralized MARL-trained critic V_φ(X_t) is differentiated, producing a per-agent gradient ∇ⁱ. This happens at every single denoising step, not once at the end — the trajectory does not exist yet when this guidance is applied.'},
+  {id:'b4', title:'Guided Reverse Step', meta:'μ_t^i + λΣ_t∇ⁱ, then re-inpaint',
+   text:'Each agent\'s denoising mean is shifted by the scaled value gradient before sampling τ_{t-1}^i, then boundary conditions are re-enforced. This is the actual drift term that pushes independently-sampled trajectories apart.'},
+  {id:'b5', title:'Repeat for t = T…1', meta:'≈256 steps',
+   text:'Steps B2–B4 repeat for every diffusion timestep from T down to 1 — the coordination signal is applied roughly 256 times per trajectory, not once.'},
+  {id:'b6', title:'Coordinated Trajectories X₀', meta:'final joint output',
+   text:'The fully denoised set of per-agent trajectories, now shaped by repeated value guidance — reduced inter-agent interference, at the measured cost of slightly reduced wall clearance.'},
+];
+
+function buildFlow(containerId, data, accentAttr){
+  const container = document.getElementById(containerId);
+  data.forEach((n, i) => {
+    if(i > 0){
+      const conn = document.createElement('div');
+      conn.className = 'connector';
+      conn.dataset.index = i;
+      container.appendChild(conn);
+    }
+    const node = document.createElement('div');
+    node.className = 'node' + (n.guidance ? ' guidance-point' : '');
+    node.tabIndex = 0;
+    node.dataset.index = i;
+    node.innerHTML = `<div class="node-title">${n.title}</div><div class="node-meta">${n.meta}</div>`;
+    container.appendChild(node);
+  });
+}
+
+buildFlow('flowA', dataA, 'a');
+buildFlow('flowB', dataB, 'b');
+
+const state = {
+  A:{data:dataA, active:-1, timer:null},
+  B:{data:dataB, active:-1, timer:null},
+};
+
+function render(panelKey){
+  const s = state[panelKey];
+  const flow = document.getElementById('flow'+panelKey);
+  const nodes = flow.querySelectorAll('.node');
+  const conns = flow.querySelectorAll('.connector');
+  nodes.forEach((el, i) => el.classList.toggle('active', i === s.active));
+  conns.forEach((el, i) => {
+    // connector[i] sits before node index i+1
+    el.classList.toggle('flowed', (i+1) <= s.active);
+  });
+  document.getElementById('count'+panelKey).textContent = (s.active+1) + ' / ' + s.data.length;
+  const info = s.data[s.active];
+  const explain = document.getElementById('explain'+panelKey);
+  if(info){
+    explain.innerHTML = `<span class="explain-title">${info.title}</span>${info.text}`;
+  }
+}
+
+function setActive(panelKey, idx){
+  const s = state[panelKey];
+  s.active = idx;
+  render(panelKey);
+}
+
+function step(panelKey){
+  const s = state[panelKey];
+  const next = (s.active + 1) % s.data.length;
+  setActive(panelKey, next);
+}
+
+function play(panelKey){
+  const s = state[panelKey];
+  if(s.timer){ clearInterval(s.timer); s.timer = null; return; }
+  s.timer = setInterval(() => step(panelKey), 1100);
+}
+
+function reset(panelKey){
+  const s = state[panelKey];
+  if(s.timer){ clearInterval(s.timer); s.timer = null; }
+  setActive(panelKey, -1);
+  document.getElementById('explain'+panelKey).innerHTML = '<span class="explain-title">Click a block</span>Or step through the flow above — this panel will explain whatever\'s active.';
+}
+
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const p = btn.dataset.panel, action = btn.dataset.do;
+    if(action === 'step') step(p);
+    else if(action === 'play') play(p);
+    else if(action === 'reset') reset(p);
+  });
+});
+
+['A','B'].forEach(panelKey => {
+  const flow = document.getElementById('flow'+panelKey);
+  flow.querySelectorAll('.node').forEach(node => {
+    node.addEventListener('click', () => setActive(panelKey, parseInt(node.dataset.index,10)));
+    node.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setActive(panelKey, parseInt(node.dataset.index,10)); }
+    });
+  });
+});
+</script>
+</body>
+</html>
