@@ -185,6 +185,8 @@
   },
   "active": "0e78baf5e70ff508",
   "lastOpenFiles": [
+    "VLA/safety/openwiki/architecture/safedojo.md",
+    "VLA/safety/openwiki/architecture/safety_comparison.md",
     "VLA/safety/openwiki/architecture/lima_safety.md",
     "VLA/safety/openwiki/architecture/world_env.md",
     "VLA/safety/openwiki/architecture/safevla.md",
@@ -217,9 +219,7 @@
     "VLA/openwiki/mechanisms/dual_loop_defense.md",
     "VLA/openwiki/mechanisms/index.md",
     "VLA/openwiki/mechanisms",
-    "VLA/openwiki/architecture/index.md",
     "VLA/openwiki/architecture",
-    "VLA/openwiki/quickstart.md",
     "VLA/openwiki"
   ]
 }
