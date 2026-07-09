@@ -1,0 +1,863 @@
+<title>Diffuser — Planning with Diffusion, an interactive walkthrough</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #141a24;
+    --surface-2: #1b2330;
+    --border: #2a3345;
+    --text: #e8ecf4;
+    --text-dim: #8d96a8;
+    --accent: #ff8f5e;
+    --accent-soft: rgba(255, 143, 94, 0.16);
+    --noise: #5f7fb0;
+    --noise-soft: rgba(95, 127, 176, 0.18);
+    --good: #6fbf8b;
+    --radius: 10px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f2ec;
+      --surface: #ffffff;
+      --surface-2: #eeeae1;
+      --border: #ddd5c6;
+      --text: #232019;
+      --text-dim: #6b6355;
+      --accent: #d85f26;
+      --accent-soft: rgba(216, 95, 38, 0.12);
+      --noise: #3f5f8c;
+      --noise-soft: rgba(63, 95, 140, 0.12);
+      --good: #2f8a58;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0e14; --surface: #141a24; --surface-2: #1b2330; --border: #2a3345;
+    --text: #e8ecf4; --text-dim: #8d96a8; --accent: #ff8f5e; --accent-soft: rgba(255,143,94,0.16);
+    --noise: #5f7fb0; --noise-soft: rgba(95,127,176,0.18); --good: #6fbf8b;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f2ec; --surface: #ffffff; --surface-2: #eeeae1; --border: #ddd5c6;
+    --text: #232019; --text-dim: #6b6355; --accent: #d85f26; --accent-soft: rgba(216,95,38,0.12);
+    --noise: #3f5f8c; --noise-soft: rgba(63,95,140,0.12); --good: #2f8a58;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .byline { color: var(--text-dim); font-size: 14px; }
+  .tldr {
+    font-size: 16px;
+    max-width: 68ch;
+    color: var(--text);
+    margin-top: 6px;
+  }
+  .tldr strong { color: var(--accent); font-weight: 600; }
+
+  section.stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 860px) {
+    section.stage { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .panel h2, .panel h3 {
+    font-family: var(--serif);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+
+  .visual-panel canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .step-readout {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .step-readout .n { color: var(--text); font-size: 15px; }
+
+  input[type="range"] {
+    width: 100%;
+    margin: 10px 0 4px;
+    accent-color: var(--accent);
+  }
+
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  button.ctrl {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.ctrl:hover { border-color: var(--accent); color: var(--accent); }
+  button.ctrl.primary {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button.ctrl:focus-visible, .pipeline li:focus-visible, .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .toggles {
+    display: flex;
+    gap: 16px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    color: var(--text-dim);
+    user-select: none;
+  }
+  .toggle input { accent-color: var(--accent); }
+  .toggle.active { color: var(--text); }
+
+  .caption {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    font-size: 13.5px;
+    color: var(--text-dim);
+    min-height: 40px;
+  }
+  .caption strong { color: var(--text); }
+
+  ol.pipeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  ol.pipeline li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  ol.pipeline li:hover { background: var(--surface-2); }
+  ol.pipeline li.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  ol.pipeline li.selected { border-color: var(--text-dim); }
+  .idx {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    width: 18px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+  ol.pipeline li.active .idx { color: var(--accent); }
+  .block-label { font-weight: 600; font-size: 14px; }
+  .block-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .explain-drawer {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--text);
+    min-height: 92px;
+  }
+  .explain-drawer .drawer-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .hint { color: var(--text-dim); font-size: 12px; margin-top: 10px; }
+
+  section.unet-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  section.unet-detail[hidden] { display: none; }
+  .unet-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 26px;
+    align-items: center;
+    margin-top: 14px;
+  }
+  @media (max-width: 780px) { .unet-grid { grid-template-columns: 1fr; } }
+
+  .macro-unet { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 20px 8px; overflow-x: auto; }
+  .macro-block {
+    width: 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .macro-block.highlight { border-color: var(--accent); background: var(--accent-soft); }
+
+  .residual-chain {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 26px 4px 10px;
+    position: relative;
+  }
+  .rnode {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    flex-shrink: 0;
+    min-width: 64px;
+    transition: background 150ms, color 150ms, border-color 150ms;
+    position: relative;
+  }
+  .rnode.plus { border-radius: 50%; min-width: 30px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 15px; }
+  .rnode.lit { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  .rarrow { color: var(--text-dim); font-size: 14px; flex-shrink: 0; }
+  .temb {
+    position: absolute;
+    top: -30px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .unet-caption { font-size: 13px; color: var(--text-dim); margin-top: 14px; max-width: 62ch; }
+  .unet-caption strong { color: var(--text); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  footer .cite { font-family: var(--mono); }
+
+  .not-computed {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <span class="eyebrow">Paper deep dive · ICML 2022 · arXiv:2205.09991</span>
+    <h1>Diffuser: planning as denoising</h1>
+    <div class="byline">Janner, Du, Tenenbaum &amp; Levine — <em>Planning with Diffusion for Flexible Behavior Synthesis</em></div>
+    <p class="tldr">
+      Instead of learning a dynamics model and handing it to a separate trajectory optimizer, this paper trains a
+      diffusion model directly on whole trajectories. <strong>Sampling from the model is planning</strong> — rewards
+      steer the sample via classifier-style guidance, and goals/constraints are enforced via inpainting. Scrub the
+      panel below to watch one planning step turn pure noise into a trajectory.
+    </p>
+  </header>
+
+  <section class="stage">
+    <div class="panel visual-panel">
+      <h2>Denoising a plan</h2>
+      <canvas id="canvas" width="640" height="440"></canvas>
+      <div class="step-readout">
+        <span>diffusion step <span class="n" id="stepLabel">i = 20</span></span>
+        <span id="phaseLabel">pure noise</span>
+      </div>
+      <input type="range" id="slider" min="0" max="20" value="20" step="1" aria-label="Diffusion timestep">
+      <div class="transport">
+        <button class="ctrl primary" id="playBtn">▶ Play denoising</button>
+        <button class="ctrl" id="stepBackBtn">− step</button>
+        <button class="ctrl" id="stepFwdBtn">+ step</button>
+        <button class="ctrl" id="resetBtn">↺ Reset to noise</button>
+      </div>
+      <div class="toggles">
+        <label class="toggle active" id="guideToggleWrap">
+          <input type="checkbox" id="guideToggle" checked> guide function J<sub>φ</sub> active
+        </label>
+        <label class="toggle active" id="inpaintToggleWrap">
+          <input type="checkbox" id="inpaintToggle" checked> inpainting constraint active
+        </label>
+      </div>
+      <div class="caption" id="caption">
+        <strong>i = N:</strong> the plan starts as pure Gaussian noise, τ<sup>N</sup> ~ 𝒩(0, I). No structure yet — every state-action pair is unconstrained.
+      </div>
+      <p class="not-computed">Illustrative schematic — no real weights, no real inference. Positions are hand-authored, not computed by a model.</p>
+    </div>
+
+    <div class="panel pipeline-panel">
+      <h2>The planning loop</h2>
+      <ol class="pipeline" id="pipeline">
+        <li data-block="observe" tabindex="0"><span class="idx">1</span><div><div class="block-label">Observe state</div><div class="block-sub">read s from the environment</div></div></li>
+        <li data-block="init" tabindex="0"><span class="idx">2</span><div><div class="block-label">Initialize noise</div><div class="block-sub">τ&#7517; ~ 𝒩(0, I)</div></div></li>
+        <li data-block="unet" tabindex="0"><span class="idx">3</span><div><div class="block-label">Diffuser U-Net <span style="color:var(--accent); font-weight:400;">— click to open</span></div><div class="block-sub">predicts noise ε_θ(τ&#7522;, i), one denoising step</div></div></li>
+        <li data-block="guide" tabindex="0"><span class="idx">4</span><div><div class="block-label">Guide function J<sub>φ</sub></div><div class="block-sub">nudges the mean toward high return</div></div></li>
+        <li data-block="inpaint" tabindex="0"><span class="idx">5</span><div><div class="block-label">Inpainting constraint</div><div class="block-sub">overwrites known states/goal</div></div></li>
+        <li data-block="loop" tabindex="0"><span class="idx">6</span><div><div class="block-label">Repeat i = N…1</div><div class="block-sub">local consistency → global coherence</div></div></li>
+        <li data-block="execute" tabindex="0"><span class="idx">7</span><div><div class="block-label">Execute first action</div><div class="block-sub">receding-horizon control, then loop to 1</div></div></li>
+      </ol>
+      <div class="explain-drawer" id="explain">
+        <div class="drawer-title">About this diagram</div>
+        <div id="explainBody">Drag the slider or press play. Each pipeline block lights up as its part of Algorithm 1 becomes active — click any block for a plain-language explanation.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="unet-detail" id="unetDetail" hidden>
+    <h2>Inside the Diffuser U-Net</h2>
+    <p class="unet-caption">
+      Diffuser's denoising network is a U-Net — the same architecture family used in image diffusion models — but with
+      2D spatial convolutions replaced by <strong>1D temporal convolutions</strong> that slide along the planning
+      horizon. Six residual blocks like the one on the right make up the network (Figure A1 in the paper).
+    </p>
+    <div class="unet-grid">
+      <div>
+        <div class="macro-unet" id="macroUnet"></div>
+        <p class="unet-caption" style="text-align:center; margin-top:0;">the highlighted block, expanded →</p>
+      </div>
+      <div>
+        <div class="residual-chain" id="residualChain">
+          <span class="temb" id="tembLabel" style="left:0;">t</span>
+        </div>
+        <button class="ctrl primary" id="playFlowBtn" style="margin-top:6px;">▶ Play dataflow</button>
+        <p class="unet-caption">
+          A diffusion-timestep embedding <strong>t</strong> passes through a fully-connected layer and is added to the
+          activations right after the first temporal convolution. A skip connection carries the block's input
+          straight to the output, added back in after the second group-norm + Mish.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Generated for the full <a href="janner2022-diffuser-report.md" style="color: var(--accent);">research report</a> on this paper.</span>
+    <span class="cite">Janner, Du, Tenenbaum, Levine · ICML 2022 · arXiv:2205.09991</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var N = 20;
+  var state = {
+    i: N,
+    playing: false,
+    guide: true,
+    inpaint: true,
+    time: 0
+  };
+
+  // ---------- explanations ----------
+  var EXPLAIN = {
+    observe: {
+      title: "1 · Observe state",
+      body: "The controller observes the current environment state s. This exact state gets pinned into the trajectory by inpainting at every single denoising step, so whatever plan comes out is guaranteed to start where the agent actually is right now."
+    },
+    init: {
+      title: "2 · Initialize noise",
+      body: "A fresh plan begins as pure Gaussian noise, τᴺ ~ 𝒩(0, I) — a 2D array with one column per planning timestep, states and actions stacked within each column. At this point the “plan” carries no information about the task at all."
+    },
+    unet: {
+      title: "3 · Diffuser U-Net",
+      body: "A U-Net built from temporal (1D) convolutions instead of the 2D convolutions used in image diffusion. Six residual blocks — each two temporal convs, group norm, and a Mish nonlinearity — predict the noise ε_θ(τⁱ, i) to remove at this step. Click this block again to see one residual block in detail."
+    },
+    guide: {
+      title: "4 · Guide function J_φ",
+      body: "A separately-trained return predictor supplies ∇J(μ), nudging this step's mean toward higher-return trajectories — the same mechanism as classifier guidance in image diffusion, with “class label” swapped for “return.” This is how Diffuser gets composed with new reward functions at test time, with no retraining of the base model."
+    },
+    inpaint: {
+      title: "5 · Inpainting constraint",
+      body: "Known values — the current state, and any goal or contact constraint — are written directly into the trajectory array after this step's sampling, exactly like inpainting known pixels in an image. Everything else is left for the model to fill in."
+    },
+    loop: {
+      title: "6 · Repeat i = N…1",
+      body: "Each individual step only enforces local, nearby-timestep consistency. Composed over many steps, that local consistency drives the whole trajectory toward global coherence — including “stitching” familiar subsequences into genuinely novel plans, what the paper calls temporal compositionality."
+    },
+    execute: {
+      title: "7 · Execute first action",
+      body: "Once denoising reaches τ⁰, the plan's first action is executed in the environment. Then the whole loop repeats from the new state — receding-horizon control, where “replanning” just means “resampling a new trajectory.”"
+    }
+  };
+
+  var explainBody = document.getElementById("explainBody");
+  var pipelineEl = document.getElementById("pipeline");
+  var selectedBlock = null;
+
+  function showExplain(key) {
+    var e = EXPLAIN[key];
+    if (!e) return;
+    document.querySelector("#explain .drawer-title").textContent = e.title;
+    explainBody.textContent = e.body;
+  }
+
+  pipelineEl.querySelectorAll("li").forEach(function (li) {
+    li.addEventListener("click", function () {
+      var key = li.getAttribute("data-block");
+      selectedBlock = key;
+      pipelineEl.querySelectorAll("li").forEach(function (o) { o.classList.remove("selected"); });
+      li.classList.add("selected");
+      showExplain(key);
+      if (key === "unet") toggleUnetDetail();
+    });
+    li.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); li.click(); }
+    });
+  });
+
+  // ---------- U-Net detail section ----------
+  var unetDetail = document.getElementById("unetDetail");
+  var macroUnet = document.getElementById("macroUnet");
+  var residualChain = document.getElementById("residualChain");
+  var heights = [70, 55, 42, 32, 32, 42, 55, 70];
+  heights.forEach(function (h, idx) {
+    var b = document.createElement("div");
+    b.className = "macro-block" + (idx === 3 ? " highlight" : "");
+    b.style.height = h + "px";
+    macroUnet.appendChild(b);
+  });
+
+  var chainNodes = [
+    { id: "x", label: "x", type: "node" },
+    { id: "conv1", label: "Conv1D", type: "node" },
+    { id: "plus1", label: "+", type: "plus" },
+    { id: "gn1", label: "GroupNorm\n+ Mish", type: "node" },
+    { id: "conv2", label: "Conv1D", type: "node" },
+    { id: "gn2", label: "GroupNorm\n+ Mish", type: "node" },
+    { id: "plus2", label: "+", type: "plus" },
+    { id: "out", label: "output", type: "node" }
+  ];
+  chainNodes.forEach(function (n, idx) {
+    if (idx > 0) {
+      var ar = document.createElement("span");
+      ar.className = "rarrow";
+      ar.textContent = "→";
+      residualChain.appendChild(ar);
+    }
+    var el = document.createElement("div");
+    el.className = "rnode" + (n.type === "plus" ? " plus" : "");
+    el.id = "rn-" + n.id;
+    el.innerHTML = n.label.replace("\n", "<br>");
+    residualChain.appendChild(el);
+  });
+
+  function toggleUnetDetail() {
+    unetDetail.hidden = !unetDetail.hidden;
+    if (!unetDetail.hidden) unetDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  var flowOrder = ["x", "conv1", "plus1", "gn1", "conv2", "gn2", "plus2", "out"];
+  var flowTimer = null;
+  document.getElementById("playFlowBtn").addEventListener("click", function () {
+    if (flowTimer) { clearInterval(flowTimer); flowTimer = null; }
+    flowOrder.forEach(function (id) { document.getElementById("rn-" + id).classList.remove("lit"); });
+    var step = 0;
+    flowTimer = setInterval(function () {
+      flowOrder.forEach(function (id) { document.getElementById("rn-" + id).classList.remove("lit"); });
+      document.getElementById("rn-" + flowOrder[step]).classList.add("lit");
+      step++;
+      if (step >= flowOrder.length) { clearInterval(flowTimer); flowTimer = null; }
+    }, 420);
+  });
+
+  // ---------- canvas trajectory visualization ----------
+  var canvas = document.getElementById("canvas");
+  var ctx = canvas.getContext("2d");
+  var DPR = window.devicePixelRatio || 1;
+  var W = 640, H = 440;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  ctx.scale(DPR, DPR);
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  var start = { x: 70, y: 360 };
+  var goal = { x: 560, y: 70 };
+  var obstacle = { x: 190, y: 150, w: 220, h: 150 };
+  var rewardZone = { x: 470, y: 260, r: 46 };
+
+  var baseWaypoints = [
+    { x: 70, y: 360 }, { x: 90, y: 300 }, { x: 100, y: 220 },
+    { x: 130, y: 150 }, { x: 170, y: 95 }, { x: 260, y: 60 },
+    { x: 380, y: 55 }, { x: 470, y: 60 }, { x: 560, y: 70 }
+  ];
+  var guidedWaypoints = [
+    { x: 70, y: 360 }, { x: 95, y: 320 }, { x: 130, y: 280 },
+    { x: 210, y: 300 }, { x: 320, y: 305 }, { x: 430, y: 280 },
+    { x: 500, y: 200 }, { x: 545, y: 120 }, { x: 560, y: 70 }
+  ];
+
+  function seededRand(seed) {
+    var x = Math.sin(seed * 999.7) * 10000;
+    return x - Math.floor(x);
+  }
+  var jitterVecs = baseWaypoints.map(function (_, idx) {
+    var a = seededRand(idx + 1) * Math.PI * 2;
+    var mag = 34 + seededRand(idx + 7) * 46;
+    return { dx: Math.cos(a) * mag, dy: Math.sin(a) * mag, phase: seededRand(idx + 13) * 10 };
+  });
+
+  var speckles = Array.from({ length: 46 }, function (_, idx) {
+    return {
+      t: seededRand(idx + 30),
+      off: (seededRand(idx + 60) - 0.5) * 150,
+      phase: seededRand(idx + 90) * 10,
+      speed: 0.6 + seededRand(idx + 120)
+    };
+  });
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function lerpColor(c1, c2, t) {
+    return [
+      Math.round(lerp(c1[0], c2[0], t)),
+      Math.round(lerp(c1[1], c2[1], t)),
+      Math.round(lerp(c1[2], c2[2], t))
+    ];
+  }
+  function hexToRgb(hex) {
+    hex = hex.replace("#", "");
+    return [parseInt(hex.substr(0, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(4, 2), 16)];
+  }
+  function pointOnPath(pts, t) {
+    var n = pts.length - 1;
+    var seg = Math.min(Math.floor(t * n), n - 1);
+    var localT = t * n - seg;
+    var p0 = pts[seg], p1 = pts[seg + 1];
+    return { x: lerp(p0.x, p1.x, localT), y: lerp(p0.y, p1.y, localT) };
+  }
+
+  function draw() {
+    var noiseAmount = state.i / N; // 1 = full noise, 0 = clean
+    var borderColor = cssVar("--border");
+    var textDim = cssVar("--text-dim");
+    var noiseRgb = hexToRgb(cssVar("--noise").trim() || "#5f7fb0");
+    var accentRgb = hexToRgb(cssVar("--accent").trim() || "#ff8f5e");
+    var pathColor = lerpColor(noiseRgb, accentRgb, 1 - noiseAmount);
+    var goodRgb = hexToRgb(cssVar("--good").trim() || "#6fbf8b");
+
+    ctx.clearRect(0, 0, W, H);
+
+    // obstacle
+    ctx.fillStyle = cssVar("--surface");
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    roundRect(obstacle.x, obstacle.y, obstacle.w, obstacle.h, 10);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = textDim;
+    ctx.font = "12px " + cssVar("--mono");
+    ctx.fillText("obstacle", obstacle.x + 14, obstacle.y + 22);
+
+    // reward zone (only meaningful when guidance is on)
+    if (state.guide) {
+      var g = ctx.createRadialGradient(rewardZone.x, rewardZone.y, 2, rewardZone.x, rewardZone.y, rewardZone.r);
+      g.addColorStop(0, "rgba(" + goodRgb.join(",") + ",0.35)");
+      g.addColorStop(1, "rgba(" + goodRgb.join(",") + ",0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(rewardZone.x, rewardZone.y, rewardZone.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(" + goodRgb.join(",") + ",0.9)";
+      ctx.font = "11px " + cssVar("--mono");
+      ctx.fillText("J_φ high-return region", rewardZone.x - 44, rewardZone.y + rewardZone.r + 14);
+    }
+
+    // build jittered waypoints
+    var target = state.guide ? guidedWaypoints : baseWaypoints;
+    var pts = target.map(function (p, idx) {
+      var isEndpoint = idx === 0 || idx === target.length - 1;
+      if (isEndpoint && state.inpaint) return { x: p.x, y: p.y };
+      var jv = jitterVecs[idx];
+      var wobble = Math.sin(state.time * 1.6 + jv.phase) * 6 * noiseAmount;
+      var amt = noiseAmount * noiseAmount; // ease
+      return {
+        x: p.x + jv.dx * amt + wobble,
+        y: p.y + jv.dy * amt + wobble
+      };
+    });
+
+    // speckle cloud (fades out as it denoises)
+    if (noiseAmount > 0.02) {
+      speckles.forEach(function (s) {
+        var base = pointOnPath(target, s.t);
+        var wob = Math.sin(state.time * s.speed + s.phase) * 10;
+        var x = base.x + s.off * noiseAmount + wob * noiseAmount;
+        var y = base.y + (seededRand(s.t * 40) - 0.5) * 90 * noiseAmount + wob * noiseAmount;
+        ctx.fillStyle = "rgba(" + noiseRgb.join(",") + "," + (0.5 * noiseAmount) + ")";
+        ctx.beginPath();
+        ctx.arc(x, y, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // trajectory curve through jittered points
+    ctx.strokeStyle = "rgb(" + pathColor.join(",") + ")";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalAlpha = 0.35 + 0.65 * (1 - noiseAmount * 0.7);
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (var k = 1; k < pts.length - 1; k++) {
+      var mx = (pts[k].x + pts[k + 1].x) / 2;
+      var my = (pts[k].y + pts[k + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[k].x, pts[k].y, mx, my);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // waypoint dots
+    pts.forEach(function (p, idx) {
+      if (idx === 0 || idx === pts.length - 1) return;
+      ctx.fillStyle = "rgba(" + pathColor.join(",") + ",0.8)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // start marker
+    drawMarker(pts[0].x, pts[0].y, "start", state.inpaint);
+    // goal marker
+    drawMarker(pts[pts.length - 1].x, pts[pts.length - 1].y, "goal", state.inpaint);
+  }
+
+  function drawMarker(x, y, kind, pinned) {
+    var accent = cssVar("--accent");
+    var textDim = cssVar("--text-dim");
+    ctx.save();
+    ctx.globalAlpha = pinned ? 1 : 0.55 + 0.45 * (1 - state.i / N);
+    ctx.fillStyle = cssVar("--surface");
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = accent;
+    ctx.font = "bold 11px " + cssVar("--sans");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(kind === "start" ? "S" : "G", x, y + 0.5);
+    ctx.textAlign = "left";
+    ctx.fillStyle = textDim;
+    ctx.font = "11px " + cssVar("--sans");
+    ctx.fillText(kind === "start" ? "start (current state)" : "goal", x - 12, y - 16);
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- transport controls ----------
+  var slider = document.getElementById("slider");
+  var stepLabel = document.getElementById("stepLabel");
+  var phaseLabel = document.getElementById("phaseLabel");
+  var caption = document.getElementById("caption");
+  var playBtn = document.getElementById("playBtn");
+
+  var CAPTIONS = [
+    { max: N, text: "<strong>i = N:</strong> the plan starts as pure Gaussian noise, τᴺ ~ 𝒩(0, I). No structure yet — every state-action pair is unconstrained." },
+    { max: N * 0.7, text: "<strong>Early denoising:</strong> the U-Net's local receptive field is only enforcing nearby-timestep consistency — the plan is still mostly speckle, but a rough shape is emerging." },
+    { max: N * 0.35, text: "<strong>Mid denoising:</strong> local consistency, composed over many steps, is starting to drive global coherence. Guidance (if on) is visibly bending the path toward the learned high-return region." },
+    { max: N * 0.05, text: "<strong>Late denoising:</strong> the trajectory is nearly τ⁰ — smooth, and (if inpainting is on) still exactly pinned to the true start state." },
+    { max: 0, text: "<strong>i = 0:</strong> τ⁰ is the final plan. Its first action gets executed in the environment, then the loop restarts from the new state." }
+  ];
+  function captionFor(i) {
+    for (var k = 0; k < CAPTIONS.length; k++) if (i >= CAPTIONS[k].max) return CAPTIONS[k].text;
+    return CAPTIONS[CAPTIONS.length - 1].text;
+  }
+
+  function updateActiveBlocks() {
+    var active;
+    if (state.i === N) active = ["observe", "init"];
+    else if (state.i === 0) active = ["execute"];
+    else active = ["unet", "guide", "inpaint", "loop"];
+    if (!state.guide) active = active.filter(function (a) { return a !== "guide"; });
+    if (!state.inpaint) active = active.filter(function (a) { return a !== "inpaint"; });
+    pipelineEl.querySelectorAll("li").forEach(function (li) {
+      var key = li.getAttribute("data-block");
+      li.classList.toggle("active", active.indexOf(key) !== -1);
+    });
+  }
+
+  function render() {
+    stepLabel.textContent = "i = " + state.i;
+    phaseLabel.textContent = state.i === N ? "pure noise" : state.i === 0 ? "final plan τ⁰" : "denoising…";
+    caption.innerHTML = captionFor(state.i);
+    slider.value = state.i;
+    updateActiveBlocks();
+    draw();
+  }
+
+  slider.addEventListener("input", function () {
+    state.i = parseInt(slider.value, 10);
+    setPlaying(false);
+    render();
+  });
+
+  document.getElementById("stepBackBtn").addEventListener("click", function () {
+    setPlaying(false);
+    state.i = Math.max(0, state.i - 1);
+    render();
+  });
+  document.getElementById("stepFwdBtn").addEventListener("click", function () {
+    setPlaying(false);
+    state.i = Math.min(N, state.i + 1);
+    render();
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    setPlaying(false);
+    state.i = N;
+    render();
+  });
+
+  function setPlaying(on) {
+    state.playing = on;
+    playBtn.textContent = on ? "⏸ Pause" : "▶ Play denoising";
+    playBtn.classList.toggle("primary", true);
+  }
+  playBtn.addEventListener("click", function () {
+    if (state.i === 0 && !state.playing) state.i = N;
+    setPlaying(!state.playing);
+  });
+
+  function wireToggle(id, wrapId, key) {
+    var input = document.getElementById(id);
+    var wrap = document.getElementById(wrapId);
+    input.addEventListener("change", function () {
+      state[key] = input.checked;
+      wrap.classList.toggle("active", input.checked);
+      render();
+    });
+  }
+  wireToggle("guideToggle", "guideToggleWrap", "guide");
+  wireToggle("inpaintToggle", "inpaintToggleWrap", "inpaint");
+
+  var lastT = null;
+  var acc = 0;
+  function tick(ts) {
+    if (lastT === null) lastT = ts;
+    var dt = (ts - lastT) / 1000;
+    lastT = ts;
+    state.time += dt;
+
+    if (state.playing) {
+      acc += dt;
+      if (acc > 0.32) {
+        acc = 0;
+        state.i -= 1;
+        if (state.i <= 0) { state.i = 0; setPlaying(false); }
+      }
+    }
+    render();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  render();
+})();
+</script>
