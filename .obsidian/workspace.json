@@ -185,6 +185,8 @@
   },
   "active": "0e78baf5e70ff508",
   "lastOpenFiles": [
+    "VLA/Diffusion-robotics/openwiki/_dummy_dir",
+    "VLA/Diffusion-robotics/openwiki/implementation_guidance.md",
     "VLA/Diffusion-robotics/openwiki/research_summary.md",
     "VLA/Diffusion-robotics/openwiki/concepts.md",
     "VLA/Diffusion-robotics/openwiki/architecture_overview.md",
@@ -218,8 +220,6 @@
     "VLA/safety/openwiki/domains",
     "VLA/safety/openwiki/mechanisms/world_modeling_safety.md",
     "VLA/safety/openwiki/mechanisms/policy_alignment.md",
-    "VLA/safety/openwiki/mechanisms/inference_time_filtering.md",
-    "VLA/safety/openwiki/mechanisms/dual_loop_defense.md",
     "VLA/safety/openwiki/mechanisms"
   ]
 }
