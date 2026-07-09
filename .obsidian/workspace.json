@@ -185,6 +185,9 @@
   },
   "active": "0e78baf5e70ff508",
   "lastOpenFiles": [
+    "VLA/Diffusion-robotics/openwiki/operations.md",
+    "VLA/Diffusion-robotics/CLAUDE.md",
+    "VLA/Diffusion-robotics/AGENTS.md",
     "VLA/Diffusion-robotics/openwiki/_dummy_dir",
     "VLA/Diffusion-robotics/openwiki/implementation_guidance.md",
     "VLA/Diffusion-robotics/openwiki/research_summary.md",
@@ -217,9 +220,6 @@
     "VLA/safety/openwiki/testing/evaluation_strategy.md",
     "VLA/safety/openwiki/testing",
     "VLA/safety/openwiki/domains/safety_concepts.md",
-    "VLA/safety/openwiki/domains",
-    "VLA/safety/openwiki/mechanisms/world_modeling_safety.md",
-    "VLA/safety/openwiki/mechanisms/policy_alignment.md",
-    "VLA/safety/openwiki/mechanisms"
+    "VLA/safety/openwiki/domains"
   ]
 }
